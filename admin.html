@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Master Admin Control - JR Snooker Lounge</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <div class="app-container">
+        <!-- Header -->
+        <header class="app-header">
+            <div style="display: flex; align-items: center; gap: 2rem;">
+                <div style="display: flex; align-items: center; gap: 0.75rem;">
+                    <img src="logo.png" alt="JR Snooker Logo" style="height: 64px; width: auto; border-radius: 8px;">
+                </div>
+                <nav class="app-nav">
+                    <button id="theme-toggle" class="btn"
+                        style="padding: 0.5rem; width: auto; background: transparent; border: 1px solid var(--border-color); color: var(--text-primary);"
+                        title="Toggle Theme">
+                        🌓
+                    </button>
+                    <a href="index.html" class="nav-link">Dashboard</a>
+                    <a href="reports.html" class="nav-link">Reports</a>
+                    <a href="admin.html" class="nav-link active" style="color: var(--accent-blue);">Admin Panel</a>
+                    <a href="#" class="nav-link" onclick="logout(); return false;"
+                        style="color: var(--accent-red);">Logout</a>
+                </nav>
+            </div>
+            <div class="stats" style="flex-wrap: wrap; gap: 0.5rem; justify-content: flex-end;">
+                <span class="stat-badge" style="background: var(--accent-red); color: white;">MASTER OVERRIDE
+                    ACTIVE</span>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main style="padding: 1.5rem; margin-top: 1rem; max-width: 1200px; margin-inline: auto;">
+
+            <div class="reports-grid" style="grid-template-columns: 1fr; gap: 2rem;">
+                <!-- User Management -->
+                <div class="report-panel" id="user-mgmt-panel" style="border: 2px solid var(--accent-blue);">
+                    <h2 style="color: var(--accent-blue); display: flex; justify-content: space-between;">
+                        <span>System User Management</span>
+                    </h2>
+
+                    <div
+                        style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-bottom: 2rem; padding-bottom: 2rem; border-bottom: 1px solid var(--border-color);">
+
+                        <!-- Change Admin Password -->
+                        <div>
+                            <h3 style="margin-bottom: 1rem; color: var(--text-main);">Master Admin Credential</h3>
+                            <form id="admin-pass-form" onsubmit="handleAdminPassChange(event)">
+                                <div class="form-group">
+                                    <label>New Admin Password</label>
+                                    <input type="password" id="new-admin-pass" required
+                                        placeholder="Enter new highly secure password...">
+                                </div>
+                                <button type="submit" class="btn btn-online"
+                                    style="width: 100%; margin-top: 1rem;">Update Admin Password</button>
+                            </form>
+                        </div>
+
+                        <!-- Create Staff User -->
+                        <div>
+                            <h3 style="margin-bottom: 1rem; color: var(--text-main);">Create New Staff User</h3>
+                            <form id="create-staff-form" onsubmit="handleStaffCreate(event)">
+                                <div class="form-group" style="margin-bottom: 0.5rem;">
+                                    <label>Staff Username (Login ID)</label>
+                                    <input type="text" id="new-staff-user" required placeholder="e.g. naeem123">
+                                </div>
+                                <div class="form-group" style="margin-bottom: 1rem;">
+                                    <label>Staff Password</label>
+                                    <input type="text" id="new-staff-pass" required placeholder="Set default password">
+                                </div>
+                                <div class="form-group" style="margin-bottom: 1rem;">
+                                    <label
+                                        style="margin-bottom: 0.5rem; display: block; font-weight: 600;">Permissions</label>
+                                    <label
+                                        style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.3rem; font-weight: normal; cursor: pointer;">
+                                        <input type="checkbox" id="perm-add" checked> Add Entry (Start Session)
+                                    </label>
+                                    <label
+                                        style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.3rem; font-weight: normal; cursor: pointer;">
+                                        <input type="checkbox" id="perm-edit"> Edit Entry
+                                    </label>
+                                    <label
+                                        style="display: flex; align-items: center; gap: 0.5rem; font-weight: normal; cursor: pointer;">
+                                        <input type="checkbox" id="perm-delete"> Delete Entry
+                                    </label>
+                                </div>
+                                <button type="submit" class="btn btn-start"
+                                    style="width: 100%; margin-top: 1rem;">Provision Staff Account</button>
+                            </form>
+                        </div>
+
+                    </div>
+
+                    <!-- Active Accounts List -->
+                    <h3 style="margin-bottom: 1rem; color: var(--text-secondary);">Active System Accounts</h3>
+                    <div class="table-responsive">
+                        <table class="data-table" id="users-table">
+                            <thead>
+                                <tr>
+                                    <th>Username</th>
+                                    <th>Role Permissions</th>
+                                    <th>Password Hash (Raw)</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="users-tbody">
+                                <!-- Populated dynamically -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Database Control Panel -->
+                <div class="report-panel" style="border: 2px solid var(--accent-red); margin-top: 2rem;">
+                    <h2 style="color: var(--accent-red); display: flex; justify-content: space-between;">
+                        <span>System Database Reset</span>
+                    </h2>
+                    <p style="color: var(--text-secondary); margin-bottom: 1.5rem; font-size: 0.9rem;">
+                        WARNING: This action will completely erase all local data including active tables, income,
+                        expenses, and users (except the master admin account). Use this only for testing purposes or
+                        starting a completely fresh database.
+                    </p>
+                    <button class="btn btn-end" onclick="confirmClearLocalData()"
+                        style="width: 100%; max-width: 300px; margin: 0 auto; background-color: var(--accent-red); color: white;">
+                        Clear Local Data & Factory Reset
+                    </button>
+                </div>
+
+                <!-- Global Data Override: Daily Income -->
+                <div class="report-panel" style="border: 2px solid var(--accent-red);">
+                    <h2 style="color: var(--accent-red); margin-bottom: 0.5rem;">Daily Income Override (Ledger
+                        Correction)</h2>
+                    <p style="color: var(--text-secondary); margin-bottom: 1.5rem; font-size: 0.9rem;">WARNING: Editing
+                        or deleting rows here will permanently alter the historical database and directly affect the
+                        reports.</p>
+
+                    <div class="table-responsive">
+                        <table class="data-table" id="income-override-table">
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Player/Tab</th>
+                                    <th>Revenue (PKR)</th>
+                                    <th>Mode</th>
+                                    <th>Actions (DANGER)</th>
+                                </tr>
+                            </thead>
+                            <tbody id="income-override-tbody">
+                                <!-- Populated dynamically -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Global Data Override: Expenses -->
+                <div class="report-panel" style="border: 2px solid var(--accent-red);">
+                    <h2 style="color: var(--accent-red); margin-bottom: 0.5rem;">Expense Override (Ledger Correction)
+                    </h2>
+                    <p style="color: var(--text-secondary); margin-bottom: 1.5rem; font-size: 0.9rem;">WARNING: Directly
+                        modifying Expense tickets will impact Net Profit calculations system-wide.</p>
+
+                    <div class="table-responsive">
+                        <table class="data-table" id="expense-override-table">
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Category</th>
+                                    <th>Sub-Category/Desc</th>
+                                    <th>Debit (PKR)</th>
+                                    <th>Actions (DANGER)</th>
+                                </tr>
+                            </thead>
+                            <tbody id="expense-override-tbody">
+                                <!-- Populated dynamically -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Part 2: Admin Ledger View (Player Debts) -->
+                <div class="report-panel" id="player-ledger-panel" style="border: 2px solid var(--accent-blue);">
+                    <h2 style="color: var(--accent-blue); margin-bottom: 0.5rem;">Player Ledger & Debts</h2>
+                    <p style="color: var(--text-secondary); margin-bottom: 1.5rem; font-size: 0.9rem;">
+                        Track all cumulative pending balances. Clearing debt here removes it from the player's account
+                        but does NOT record it as Cash Income.
+                    </p>
+
+                    <div class="table-responsive">
+                        <table class="data-table" id="player-ledger-table">
+                            <thead>
+                                <tr>
+                                    <th>Player Profile (ID)</th>
+                                    <th>Membership Status</th>
+                                    <th>Total Pending Debt (PKR)</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="player-ledger-tbody">
+                                <!-- Populated dynamically -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+            </div>
+        </main>
+    </div>
+
+    <!-- Edit Row Modal (Generic) -->
+    <div id="edit-row-modal" class="modal">
+        <div class="modal-content" style="max-width: 400px;">
+            <h2 style="color: var(--accent-blue); margin-bottom: 1.5rem;" id="edit-modal-title">Edit Entry</h2>
+
+            <!-- Dynamic container based on what's being edited -->
+            <div id="edit-form-container">
+            </div>
+
+            <div style="display: flex; gap: 1rem; margin-top: 2rem;">
+                <button class="btn btn-end" onclick="closeEditModal()" style="flex: 1;">Cancel</button>
+                <button class="btn btn-online" id="confirm-edit-btn" style="flex: 1;">Save Changes</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="toast-container"></div>
+    <script src="admin.js"></script>
+</body>
+
+</html>

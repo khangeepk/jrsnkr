@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - JR Snooker Lounge</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        .login-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            width: 100%;
+        }
+
+        .login-box {
+            background-color: var(--bg-card);
+            padding: 2.5rem;
+            border-radius: 12px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+            border: 1px solid var(--border-color);
+            width: 100%;
+            max-width: 400px;
+            text-align: center;
+        }
+
+        .login-logo {
+            height: 80px;
+            margin-bottom: 1.5rem;
+            border-radius: 8px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="login-container">
+        <div class="login-box">
+            <img src="logo.png" alt="JR Snooker Logo" class="login-logo">
+            <h2 style="margin-bottom: 0.5rem;">Access Portal</h2>
+            <p style="color: var(--text-secondary); margin-bottom: 2rem; font-size: 0.9rem;">Sign in to your account</p>
+
+            <form id="login-form">
+                <div class="form-group" style="margin-bottom: 1rem; text-align: left;">
+                    <label for="username">Username</label>
+                    <input type="text" id="username" placeholder="Enter username" required autocomplete="username">
+                </div>
+                <div class="form-group" style="margin-bottom: 2rem; text-align: left;">
+                    <label for="password">Password</label>
+                    <input type="password" id="password" placeholder="Enter password" required
+                        autocomplete="current-password">
+                </div>
+                <button type="submit" class="btn btn-start" style="width: 100%;">Login</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Simple Toast Notification Container -->
+    <div id="toast-container" class="toast-container"></div>
+
+    <script src="login.js"></script>
+</body>
+
+</html>

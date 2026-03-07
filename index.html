@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JR Snooker Lounge</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+
+<body>
+    <header class="app-header">
+        <div class="header-content">
+            <div class="header-left">
+                <div style="display: flex; align-items: center; gap: 0.75rem;">
+                    <img src="logo.png" alt="JR Snooker Logo" style="height: 64px; width: auto; border-radius: 8px;">
+                </div>
+                <nav class="app-nav">
+                    <button id="theme-toggle" class="btn"
+                        style="padding: 0.5rem; width: auto; background: transparent; border: 1px solid var(--border-color); color: var(--text-primary);"
+                        title="Toggle Theme">
+                        🌓
+                    </button>
+                    <a href="index.html" class="nav-link active">Dashboard</a>
+                    <a href="reports.html" class="nav-link">Reports</a>
+                    <a href="#" class="nav-link" onclick="logout(); return false;"
+                        style="color: var(--accent-red);">Logout</a>
+                </nav>
+            </div>
+            <div class="stats" style="flex-wrap: wrap; gap: 0.5rem; justify-content: flex-end;">
+                <span id="active-tables-badge"
+                    style="color: var(--accent-green); border-color: rgba(16, 185, 129, 0.3);">Active Tables: 0/8</span>
+                <span id="cash-collection-badge"
+                    style="color: var(--text-primary); border-color: var(--border-color);">Today's Cash: Rs. 0</span>
+                <span id="pending-dues-badge"
+                    style="color: var(--accent-red); border-color: rgba(239, 68, 68, 0.3);">Pending Dues: Rs. 0</span>
+                <span id="net-cash-badge" class="profit-badge"
+                    style="flex-basis: 100%; text-align: right; background: transparent; border: none; padding-right: 0; font-size: 1.1rem; color: var(--accent-blue);">Net
+                    Cash in Hand: Rs. 0</span>
+            </div>
+        </div>
+    </header>
+
+    <main class="container">
+        <!-- Dashboard showing 8 tables -->
+        <div id="tables-grid" class="tables-grid">
+            <!-- Table cards inserted here dynamically via JS -->
+        </div>
+    </main>
+
+    <!-- Simple Toast Notification Container -->
+    <div id="toast-container" class="toast-container"></div>
+
+    <!-- Transfer Bill Modal -->
+    <div id="transfer-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Transfer Bill</h2>
+                <button class="close-btn" onclick="closeTransferModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p id="transfer-desc" style="margin-bottom: 1rem; color: var(--text-secondary);"></p>
+                <div class="form-group">
+                    <label for="transfer-to">Select Target Table/Player</label>
+                    <select id="transfer-to">
+                        <!-- Options injected via JS -->
+                    </select>
+                </div>
+                <div class="modal-actions" style="margin-top: 1.5rem; display: flex; gap: 1rem;">
+                    <button class="btn btn-start" onclick="executeTransfer()">Transfer</button>
+                    <button class="btn" style="background: var(--border-color); color: var(--text-primary);"
+                        onclick="closeTransferModal()">Cancel</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Phase 7: Pre-Match Summary Modal -->
+    <div id="pre-match-modal" class="modal">
+        <div class="modal-content" style="max-width: 450px;">
+            <div class="modal-header">
+                <h2>Start Session Confirmation</h2>
+                <button class="close-btn" onclick="closePreMatchModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p style="margin-bottom: 1rem; color: var(--text-secondary);">Please verify the player profiles before
+                    starting:</p>
+
+                <div id="pre-match-players-list"
+                    style="background: rgba(0,0,0,0.2); padding: 1rem; border-radius: 8px; border: 1px solid var(--border-color); margin-bottom: 1.5rem;">
+                    <!-- Player details injected via JS -->
+                </div>
+
+                <div class="modal-actions" style="display: flex; justify-content: space-between; gap: 1rem;">
+                    <button class="btn"
+                        style="background: var(--border-color); color: var(--text-primary); flex-basis: 50%;"
+                        onclick="closePreMatchModal()">Cancel</button>
+                    <button id="confirm-start-btn" class="btn btn-start" style="flex-basis: 50%;"
+                        onclick="executeStartSession()">Start Timer</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+
+</html>
