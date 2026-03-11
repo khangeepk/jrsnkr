@@ -1,0 +1,87 @@
+.rounded-bars .apexcharts-bar-series.apexcharts-plot-series .apexcharts-series path {
+    clip-path: inset(0 0 5% 0 round 1.25rem);
+}
+
+.rounded-circle .apexcharts-pie-area {
+    clip-path: inset(0 13% 33% 11% round 3.8125rem);
+}
+
+.rounded-pill-bars .apexcharts-rangebar-area {
+    clip-path: inset(9% 0 11% round 1.5rem);
+}
+
+body .apexcharts-tooltip {
+    border-radius: 1rem;
+}
+
+body .apexcharts-tooltip-marker {
+    border-radius: 0.25rem;
+    width: 0.75rem;
+    height: 0.25rem;
+}
+@media (min-width: 1024px){
+    .tables-position{
+        left: unset;
+        right: 100%;
+    }
+    html[dir="rtl"] .tables-position{
+        right: unset;
+        left: 100%;
+    }
+}
+body .apexcharts-tooltip.apexcharts-theme-dark {
+    background: rgba(17, 28, 45, 0.8);
+
+    .apexcharts-tooltip-title {
+        border-bottom: 0;
+        background: rgba(17, 28, 45, 0.7);
+    }
+}
+
+body .apexcharts-tooltip-series-group {
+    padding: 0 0.875rem;
+}
+
+body .apexcharts-tooltip-title {
+    padding: 0.625rem 0.875rem;
+}
+
+#vector-map svg .dxm-background {
+    stroke: transparent !important;
+}
+
+#vector-map svg path {
+    fill: #C9D6DE !important;
+    stroke-width: 0.0125rem;
+}
+
+.dxm-tooltip svg path {
+    fill: var(--color-dark) !important;
+    stroke-width: 0;
+}
+
+.dxm-tooltip div {
+    color: #fff !important;
+    font-family: inherit !important;
+}
+
+/* For gradient Color Boxex dashboard 3 */
+.primary-gradient {
+    background: linear-gradient(180deg, rgba(var(--color-primary-rgb), .12) 0, rgba(var(--color-primary-rgb), .03) 100%)
+}
+
+.warning-gradient {
+    background: linear-gradient(180deg, rgba(var(--color-warning-rgb), 0.12) 0%, rgba(var(--color-warning-rgb), 0.03) 100%);
+}
+
+.secondary-gradient {
+    background: linear-gradient(180deg, rgba(var(--color-secondary-rgb), 0.12) 0%, rgba(var(--color-secondary-rgb), 0.03) 100%);
+}
+
+.error-gradient {
+    background: linear-gradient(180deg, rgba(var(--color-error-rgb), 0.12) 0%, rgba(var(--color-error-rgb), 0.03) 100%);
+}
+
+.success-gradient {
+    background: linear-gradient(180deg, rgba(var(--color-success-rgb), 0.12) 0%, rgba(var(--color-success-rgb), 0.03) 100%);
+}
