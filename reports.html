@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Reports - JR Snooker Lounge</title>
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="style.css?v=2.2">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -18,233 +18,329 @@
                 <div style="display: flex; align-items: center; gap: 0.75rem;">
                     <img src="logo.png" alt="JR Snooker Logo" style="height: 64px; width: auto; border-radius: 8px;">
                 </div>
-                <nav class="app-nav">
-                    <button id="theme-toggle" class="btn"
-                        style="padding: 0.5rem; width: auto; background: transparent; border: 1px solid var(--border-color); color: var(--text-primary);"
-                        title="Toggle Theme">
-                        🌓
-                    </button>
-                    <a href="index.html" class="nav-link">Dashboard</a>
-                    <a href="reports.html" class="nav-link active">Reports</a>
-                    <a href="#" class="nav-link" onclick="logout(); return false;"
-                        style="color: var(--accent-red);">Logout</a>
-                </nav>
             </div>
             <div class="stats">
-                <span id="net-profit-badge" class="profit-badge" style="font-size: 1.1rem;">Net Profit: Rs. 0</span>
+                <div class="stat-widget" style="border-color: rgba(0, 229, 255, 0.3);">
+                    <span class="stat-title" style="color: var(--accent-blue);">Net Profit</span>
+                    <span class="stat-value up" id="net-profit-badge" style="color: var(--accent-blue);">Rs. 0</span>
+                </div>
             </div>
         </div>
     </header>
 
-    <main class="container">
-        <div class="reports-layout">
+    <div class="app-layout">
+        <!-- Left Navigation Sidebar -->
+        <aside class="sidebar" style="margin-top: 1.5rem;">
+            <a href="index.html" class="sidebar-icon" title="Dashboard">◫</a>
+            <a href="reports.html" class="sidebar-icon active" title="Reports">📊</a>
+            <a href="admin.html" class="sidebar-icon" id="admin-nav-icon" title="Admin/Players"
+                style="display: none;">👥</a>
+            <div style="flex: 1;"></div>
+            <a href="#" class="sidebar-icon" onclick="logout(); return false;" style="color: var(--accent-red);"
+                title="Logout">➡</a>
+        </aside>
 
-            <!-- Daily Income Portal -->
-            <div class="panel">
-                <h2>Daily Income Portal</h2>
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-                    <span style="color: var(--text-secondary);">Recorded payments (Cash & Online)</span>
-                    <strong style="color: var(--accent-blue); font-size: 1.25rem;" id="total-income">Total: Rs.
-                        0</strong>
+        <main class="reports-container" style="max-width: none; margin: 0; padding: 2rem; flex: 1; overflow-y: auto;">
+            <div class="reports-layout">
+
+                <!-- Daily Income Portal -->
+                <div class="panel">
+                    <h2>Daily Income Portal</h2>
+                    <div
+                        style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                        <span style="color: var(--text-secondary);">Recorded payments (Cash & Online)</span>
+                        <strong style="color: var(--accent-blue); font-size: 1.25rem;" id="total-income">Total: Rs.
+                            0</strong>
+                    </div>
+
+                    <!-- Phase 7: CSV Actions -->
+                    <div style="display: flex; gap: 1rem; margin-bottom: 1.5rem;" id="csv-actions-panel">
+                        <button class="btn btn-online" onclick="downloadDailyXLS()" style="flex: 1;">📥 Download Daily
+                            Report (.xls)</button>
+                        <button class="btn btn-end" onclick="closeDay()"
+                            style="flex: 1; background: var(--accent-red); color: white;">🛑 Close Day & Reset</button>
+                    </div>
+
+                    <div style="overflow-x: auto;">
+                        <table class="data-table" id="income-table">
+                            <thead>
+                                <tr>
+                                    <th>Time</th>
+                                    <th>Player</th>
+                                    <th>Amount</th>
+                                    <th>Mode</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <!-- Filled dynamically -->
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
 
-                <!-- Phase 7: CSV Actions -->
-                <div style="display: flex; gap: 1rem; margin-bottom: 1.5rem;" id="csv-actions-panel">
-                    <button class="btn btn-online" onclick="downloadDailyCSV()" style="flex: 1;">📥 Download Daily
-                        Report (CSV)</button>
-                    <button class="btn btn-end" onclick="closeDay()"
-                        style="flex: 1; background: var(--accent-red); color: white;">🛑 Close Day & Reset</button>
+                <!-- Expense Tracker -->
+                <div class="panel" id="expense-panel">
+                    <h2>Expense Tracker</h2>
+                    <div
+                        style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                        <span style="color: var(--text-secondary);">Log daily costs to calculate Net Profit</span>
+                        <strong style="color: var(--accent-red); font-size: 1.1rem;" id="total-expense">Expenses: Rs.
+                            0</strong>
+                    </div>
+
+                    <div class="form-group" style="margin-bottom: 1rem;">
+                        <label for="exp-category">Category</label>
+                        <select id="exp-category">
+                            <option value="Rent">Rent</option>
+                            <option value="Utilities">Utilities</option>
+                            <option value="Salaries">Salaries</option>
+                            <option value="Maintenance">Maintenance</option>
+                            <option value="Other">Other</option>
+                        </select>
+                    </div>
+                    <div class="form-group" style="margin-bottom: 1.5rem;">
+                        <label for="exp-amount">Amount (PKR)</label>
+                        <input type="number" id="exp-amount" min="0" placeholder="e.g. 500">
+                    </div>
+                    <button class="btn btn-end" onclick="addExpense()"
+                        style="color: white; background: var(--accent-red);">Add Expense</button>
+
+                    <!-- Recent Expenses List -->
+                    <div style="margin-top: 2rem; border-top: 1px solid var(--border-color); padding-top: 1rem;">
+                        <h3 style="font-size: 1rem; margin-bottom: 1rem; color: var(--text-secondary);">Recent Expenses
+                        </h3>
+                        <div id="expense-list" style="display: flex; flex-direction: column; gap: 0.5rem;">
+                            <!-- Filled dynamically -->
+                        </div>
+                    </div>
                 </div>
 
-                <div style="overflow-x: auto;">
-                    <table class="data-table" id="income-table">
+                <!-- Phase 4: Staff Management Portal -->
+                <div class="panel" id="staff-panel" style="grid-column: 1 / -1; margin-top: 1rem;">
+                    <h2>Staff Management & Payroll</h2>
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 2rem;">
+
+                        <!-- Advance Entry Form -->
+                        <div style="flex: 1; padding-right: 2rem; border-right: 1px solid var(--border-color);">
+                            <h3 style="font-size: 1rem; margin-bottom: 1rem; color: var(--text-secondary);">Log Advance
+                                Payment</h3>
+
+                            <div class="form-group" style="margin-bottom: 1rem;">
+                                <label for="adv-staff">Select Staff Member</label>
+                                <select id="adv-staff">
+                                    <!-- Filled dynamically -->
+                                </select>
+                            </div>
+                            <div class="form-group" style="margin-bottom: 1.5rem;">
+                                <label for="adv-amount">Advance Amount (PKR)</label>
+                                <input type="number" id="adv-amount" min="0" placeholder="e.g. 5000">
+                            </div>
+                            <button class="btn btn-credit" onclick="logAdvance()">Add Advance</button>
+                        </div>
+
+                        <!-- Monthly Payroll Report -->
+                        <div style="flex: 2;">
+                            <div
+                                style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                                <h3 style="font-size: 1rem; color: var(--text-secondary);">Monthly Payroll Report</h3>
+                            </div>
+                            <div style="overflow-x: auto;">
+                                <table class="data-table" id="payroll-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Staff Name</th>
+                                            <th>Base Salary</th>
+                                            <th>Advances Taken</th>
+                                            <th>Net Payable</th>
+                                            <th>Action</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <!-- Filled dynamically -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+
+                <!-- Phase 6: The Library (Backend Member Data) -->
+                <div class="panel" style="grid-column: 1 / -1; margin-top: 1rem;">
+                    <h2>The Library (Memberships)</h2>
+                    <div style="display: flex; gap: 2rem; align-items: flex-start;">
+
+                        <!-- Annual Membership -->
+                        <div style="flex: 1; padding-right: 2rem; border-right: 1px solid var(--border-color);">
+                            <h3 style="font-size: 1rem; margin-bottom: 1rem; color: var(--text-secondary);">Add Annual
+                                Member</h3>
+                            <div class="form-group" style="margin-bottom: 1rem;">
+                                <label for="annual-name">Name</label>
+                                <input type="text" id="annual-name" placeholder="Full Name">
+                            </div>
+                            <div class="form-group" style="margin-bottom: 1rem;">
+                                <label for="annual-phone">Phone</label>
+                                <input type="tel" id="annual-phone" placeholder="Phone Number">
+                            </div>
+                            <div class="form-group" style="margin-bottom: 1rem;">
+                                <label for="annual-start">Start Date</label>
+                                <input type="date" id="annual-start" onchange="calculateAnnualExpiry()">
+                            </div>
+                            <div class="form-group" style="margin-bottom: 1rem;">
+                                <label for="annual-expiry">Calculated Expiry (Auto)</label>
+                                <input type="text" id="annual-expiry" disabled placeholder="Ends 1 year from start">
+                            </div>
+                            <div class="form-group" style="margin-bottom: 1rem;">
+                                <label for="annual-photo">Profile Picture</label>
+                                <input type="file" id="annual-photo" accept="image/*" class="custom-file-input">
+                            </div>
+                            <div class="form-group" style="margin-bottom: 1.5rem;">
+                                <label>Membership Type</label>
+                                <input type="text" value="Annual" disabled>
+                            </div>
+                            <div class="form-group" style="margin-bottom: 1.5rem;">
+                                <label>Fee (PKR)</label>
+                                <input type="number" id="annual-fee" value="3000" disabled>
+                            </div>
+                            <button class="btn btn-online" onclick="addAnnualMember()">Register Member</button>
+                        </div>
+
+                        <!-- Tournament Membership -->
+                        <div style="flex: 1;">
+                            <h3 style="font-size: 1rem; margin-bottom: 1rem; color: var(--text-secondary);">Add
+                                Tournament
+                                Participant</h3>
+                            <div class="form-group" style="margin-bottom: 1rem;">
+                                <label for="tour-name">Name</label>
+                                <input type="text" id="tour-name" placeholder="Full Name">
+                            </div>
+                            <div class="form-group" style="margin-bottom: 1rem;">
+                                <label for="tour-id">Tournament ID / Name</label>
+                                <input type="text" id="tour-id" placeholder="e.g. Summer Cup '26">
+                            </div>
+                            <div class="form-group" style="margin-bottom: 1rem;">
+                                <label>Membership Type</label>
+                                <input type="text" value="Tournament" disabled>
+                            </div>
+                            <div class="form-group" style="margin-bottom: 1.5rem;">
+                                <label>Fee (PKR)</label>
+                                <input type="number" id="tour-fee" value="1500" disabled>
+                            </div>
+                            <div class="form-group" style="margin-bottom: 1.5rem;">
+                                <label for="tour-status">Payment Status</label>
+                                <select id="tour-status">
+                                    <option value="Paid">Paid</option>
+                                    <option value="Unpaid">Unpaid</option>
+                                </select>
+                            </div>
+                            <div class="form-group" style="margin-bottom: 1.5rem;">
+                                <label for="tour-photo">Profile Picture</label>
+                                <input type="file" id="tour-photo" accept="image/*" class="custom-file-input">
+                            </div>
+                            <button class="btn btn-start" onclick="addTournamentMember()">Register Participant</button>
+                        </div>
+                    </div>
+
+                    <!-- Library Log Views -->
+                    <div
+                        style="margin-top: 2rem; border-top: 1px solid var(--border-color); padding-top: 1rem; display: flex; gap: 2rem;">
+                        <div style="flex: 1;">
+                            <h4 style="margin-bottom: 0.5rem;">Recent Annual Members</h4>
+                            <ul id="annual-list"
+                                style="list-style: none; font-size: 0.85rem; color: var(--text-secondary); line-height: 1.6;">
+                            </ul>
+                        </div>
+                        <div style="flex: 1;">
+                            <h4 style="margin-bottom: 0.5rem;">Recent Tournament Participants</h4>
+                            <ul id="tour-list"
+                                style="list-style: none; font-size: 0.85rem; color: var(--text-secondary); line-height: 1.6;">
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Member Directory Panel -->
+            <div class="panel" id="member-directory-panel" style="grid-column: 1 / -1; margin-top: 1rem;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                    <div>
+                        <h2 style="margin: 0;">👥 Member Directory</h2>
+                        <p style="color: var(--text-secondary); font-size: 0.88rem; margin-top: 0.3rem;">Real-time view
+                            of all registered Annual & Tournament members.</p>
+                    </div>
+                    <button class="btn btn-online" onclick="exportMembersXLS()" style="white-space: nowrap;">📊 Export
+                        Members (.xls)</button>
+                </div>
+
+                <!-- Annual Members -->
+                <h3 style="font-size: 1rem; margin-bottom: 0.75rem; color: var(--accent-green);">Annual Members</h3>
+                <div style="overflow-x: auto; margin-bottom: 2rem;">
+                    <table class="data-table" id="dir-annual-table">
                         <thead>
                             <tr>
-                                <th>Time</th>
-                                <th>Player</th>
-                                <th>Amount</th>
-                                <th>Mode</th>
+                                <th>Member ID</th>
+                                <th>Name</th>
+                                <th>Phone</th>
+                                <th>Start Date</th>
+                                <th>Expiry Date</th>
+                                <th>Status</th>
                             </tr>
                         </thead>
-                        <tbody>
+                        <tbody id="dir-annual-tbody">
+                            <!-- Filled dynamically -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Tournament Members -->
+                <h3 style="font-size: 1rem; margin-bottom: 0.75rem; color: var(--accent-warning);">Tournament
+                    Participants</h3>
+                <div style="overflow-x: auto;">
+                    <table class="data-table" id="dir-tour-table">
+                        <thead>
+                            <tr>
+                                <th>Member ID</th>
+                                <th>Name</th>
+                                <th>Tournament / ID</th>
+                                <th>Payment Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="dir-tour-tbody">
                             <!-- Filled dynamically -->
                         </tbody>
                     </table>
                 </div>
             </div>
 
-            <!-- Expense Tracker -->
-            <div class="panel" id="expense-panel">
-                <h2>Expense Tracker</h2>
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-                    <span style="color: var(--text-secondary);">Log daily costs to calculate Net Profit</span>
-                    <strong style="color: var(--accent-red); font-size: 1.1rem;" id="total-expense">Expenses: Rs.
-                        0</strong>
-                </div>
-
-                <div class="form-group" style="margin-bottom: 1rem;">
-                    <label for="exp-category">Category</label>
-                    <select id="exp-category">
-                        <option value="Rent">Rent</option>
-                        <option value="Utilities">Utilities</option>
-                        <option value="Salaries">Salaries</option>
-                        <option value="Maintenance">Maintenance</option>
-                        <option value="Other">Other</option>
-                    </select>
-                </div>
-                <div class="form-group" style="margin-bottom: 1.5rem;">
-                    <label for="exp-amount">Amount (PKR)</label>
-                    <input type="number" id="exp-amount" min="0" placeholder="e.g. 500">
-                </div>
-                <button class="btn btn-end" onclick="addExpense()"
-                    style="color: white; background: var(--accent-red);">Add Expense</button>
-
-                <!-- Recent Expenses List -->
-                <div style="margin-top: 2rem; border-top: 1px solid var(--border-color); padding-top: 1rem;">
-                    <h3 style="font-size: 1rem; margin-bottom: 1rem; color: var(--text-secondary);">Recent Expenses</h3>
-                    <div id="expense-list" style="display: flex; flex-direction: column; gap: 0.5rem;">
-                        <!-- Filled dynamically -->
-                    </div>
-                </div>
-            </div>
-
-            <!-- Phase 4: Staff Management Portal -->
-            <div class="panel" id="staff-panel" style="grid-column: 1 / -1; margin-top: 1rem;">
-                <h2>Staff Management & Payroll</h2>
-                <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 2rem;">
-
-                    <!-- Advance Entry Form -->
-                    <div style="flex: 1; padding-right: 2rem; border-right: 1px solid var(--border-color);">
-                        <h3 style="font-size: 1rem; margin-bottom: 1rem; color: var(--text-secondary);">Log Advance
-                            Payment</h3>
-
-                        <div class="form-group" style="margin-bottom: 1rem;">
-                            <label for="adv-staff">Select Staff Member</label>
-                            <select id="adv-staff">
-                                <!-- Filled dynamically -->
-                            </select>
-                        </div>
-                        <div class="form-group" style="margin-bottom: 1.5rem;">
-                            <label for="adv-amount">Advance Amount (PKR)</label>
-                            <input type="number" id="adv-amount" min="0" placeholder="e.g. 5000">
-                        </div>
-                        <button class="btn btn-credit" onclick="logAdvance()">Add Advance</button>
-                    </div>
-
-                    <!-- Monthly Payroll Report -->
-                    <div style="flex: 2;">
-                        <div
-                            style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-                            <h3 style="font-size: 1rem; color: var(--text-secondary);">Monthly Payroll Report</h3>
-                        </div>
-                        <div style="overflow-x: auto;">
-                            <table class="data-table" id="payroll-table">
-                                <thead>
-                                    <tr>
-                                        <th>Staff Name</th>
-                                        <th>Base Salary</th>
-                                        <th>Advances Taken</th>
-                                        <th>Net Payable</th>
-                                        <th>Action</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <!-- Filled dynamically -->
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-
-                </div>
-            </div>
-
-            <!-- Phase 6: The Library (Backend Member Data) -->
-            <div class="panel" style="grid-column: 1 / -1; margin-top: 1rem;">
-                <h2>The Library (Memberships)</h2>
-                <div style="display: flex; gap: 2rem; align-items: flex-start;">
-
-                    <!-- Annual Membership -->
-                    <div style="flex: 1; padding-right: 2rem; border-right: 1px solid var(--border-color);">
-                        <h3 style="font-size: 1rem; margin-bottom: 1rem; color: var(--text-secondary);">Add Annual
-                            Member</h3>
-                        <div class="form-group" style="margin-bottom: 1rem;">
-                            <label for="annual-name">Name</label>
-                            <input type="text" id="annual-name" placeholder="Full Name">
-                        </div>
-                        <div class="form-group" style="margin-bottom: 1rem;">
-                            <label for="annual-phone">Phone</label>
-                            <input type="tel" id="annual-phone" placeholder="Phone Number">
-                        </div>
-                        <div class="form-group" style="margin-bottom: 1rem;">
-                            <label for="annual-start">Start Date</label>
-                            <input type="date" id="annual-start">
-                        </div>
-                        <div class="form-group" style="margin-bottom: 1.5rem;">
-                            <label>Membership Type</label>
-                            <input type="text" value="Annual" disabled>
-                        </div>
-                        <div class="form-group" style="margin-bottom: 1.5rem;">
-                            <label>Fee (PKR)</label>
-                            <input type="number" id="annual-fee" value="3000" disabled>
-                        </div>
-                        <button class="btn btn-online" onclick="addAnnualMember()">Register Member</button>
-                    </div>
-
-                    <!-- Tournament Membership -->
-                    <div style="flex: 1;">
-                        <h3 style="font-size: 1rem; margin-bottom: 1rem; color: var(--text-secondary);">Add Tournament
-                            Participant</h3>
-                        <div class="form-group" style="margin-bottom: 1rem;">
-                            <label for="tour-name">Name</label>
-                            <input type="text" id="tour-name" placeholder="Full Name">
-                        </div>
-                        <div class="form-group" style="margin-bottom: 1rem;">
-                            <label for="tour-id">Tournament ID / Name</label>
-                            <input type="text" id="tour-id" placeholder="e.g. Summer Cup '26">
-                        </div>
-                        <div class="form-group" style="margin-bottom: 1rem;">
-                            <label>Membership Type</label>
-                            <input type="text" value="Tournament" disabled>
-                        </div>
-                        <div class="form-group" style="margin-bottom: 1.5rem;">
-                            <label>Fee (PKR)</label>
-                            <input type="number" id="tour-fee" value="1500" disabled>
-                        </div>
-                        <div class="form-group" style="margin-bottom: 1.5rem;">
-                            <label for="tour-status">Payment Status</label>
-                            <select id="tour-status">
-                                <option value="Paid">Paid</option>
-                                <option value="Unpaid">Unpaid</option>
-                            </select>
-                        </div>
-                        <button class="btn btn-start" onclick="addTournamentMember()">Register Participant</button>
-                    </div>
-                </div>
-
-                <!-- Library Log Views -->
-                <div
-                    style="margin-top: 2rem; border-top: 1px solid var(--border-color); padding-top: 1rem; display: flex; gap: 2rem;">
-                    <div style="flex: 1;">
-                        <h4 style="margin-bottom: 0.5rem;">Recent Annual Members</h4>
-                        <ul id="annual-list"
-                            style="list-style: none; font-size: 0.85rem; color: var(--text-secondary); line-height: 1.6;">
-                        </ul>
-                    </div>
-                    <div style="flex: 1;">
-                        <h4 style="margin-bottom: 0.5rem;">Recent Tournament Participants</h4>
-                        <ul id="tour-list"
-                            style="list-style: none; font-size: 0.85rem; color: var(--text-secondary); line-height: 1.6;">
-                        </ul>
-                    </div>
-                </div>
-            </div>
-
-        </div>
+    </div>
     </main>
+    </div>
 
-    <div id="toast-container" class="toast-container"></div>
+    <!-- Theme initialization -->
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            if (window.setupTheme) setupTheme();
+        });
+    </script>
 
-    <script src="reports.js"></script>
+
+    <!-- Digital ID Card Modal -->
+    <div id="id-card-modal" class="modal">
+        <div class="modal-content id-card-modal-content">
+            <div id="id-card-render-area">
+                <!-- Digital ID Card Rendered Here -->
+            </div>
+            <div style="margin-top: 1.5rem; display: flex; gap: 1rem;">
+                <button class="btn btn-online" onclick="printIDCard()">🖨️ Export / Print Card</button>
+                <button class="btn btn-end" onclick="closeIDCardModal()">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- SheetJS for .xlsx export -->
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
+    <script src="reports.js?v=4.1"></script>
 </body>
 
 </html>

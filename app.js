@@ -197,8 +197,13 @@ const logSessionToLedger = (sessionData) => {
 // --- 2. Table UI Generation ---
 
 const renderTables = () => {
-    const grid = document.getElementById('tables-grid');
-    grid.innerHTML = ''; // Clear existing
+    const colLeft = document.getElementById('col-left');
+    const colCenterBottom = document.getElementById('col-center-bottom');
+    const colRight = document.getElementById('col-right');
+
+    if (colLeft) colLeft.innerHTML = '';
+    if (colCenterBottom) colCenterBottom.innerHTML = '';
+    if (colRight) colRight.innerHTML = '';
 
     const tables = getTablesState();
     const players = getPlayers();
@@ -227,18 +232,21 @@ const renderTables = () => {
         const isRunning = table.isActive;
 
         card.innerHTML = `
-            <div class="card-header">
+            <div class="card-header" style="margin-bottom: 0.5rem;">
                 <span class="table-title">Table ${table.id}</span>
-                <span class="status-badge ${isRunning ? 'active' : 'idle'}">${isRunning ? 'In Use' : 'Available'}</span>
+                <div class="table-status-ring ${isRunning ? 'active' : 'idle'} ${card.classList.contains('grace-period') ? 'grace' : ''}"></div>
             </div>
 
-            <div class="form-group" style="margin-bottom: 0.5rem;">
-                <label for="mode-${table.id}">Game Mode</label>
-                <select id="mode-${table.id}" ${isRunning ? 'disabled' : ''} onchange="handleModeChange(${table.id}, this.value)">
-                    <option value="Single" ${table.gameMode === 'Single' ? 'selected' : ''}>Single (25m Limit)</option>
-                    <option value="Double" ${table.gameMode === 'Double' ? 'selected' : ''}>Double (35m Limit)</option>
-                    <option value="Century" ${table.gameMode === 'Century' ? 'selected' : ''}>Century (No Limit)</option>
-                </select>
+            <div class="form-group" style="margin-bottom: 1rem;">
+                <div class="segmented-control" ${isRunning ? 'style="pointer-events: none; opacity: 0.8;"' : ''}>
+                    <div class="segment-tab ${table.gameMode === 'Single' ? 'active' : ''}" onclick="handleModeChange(${table.id}, 'Single')">[SINGLE]</div>
+                    <div class="segment-tab ${table.gameMode === 'Double' ? 'active' : ''}" onclick="handleModeChange(${table.id}, 'Double')">[DOUBLE]</div>
+                    <div class="segment-tab ${table.gameMode === 'Century' ? 'active' : ''}" onclick="handleModeChange(${table.id}, 'Century')">[CENTURY]</div>
+                </div>
+                <!-- Small decorative limit hint -->
+                <div style="text-align: center; font-size: 0.7rem; color: var(--text-secondary); margin-top: 0.3rem;">
+                    ${(table.gameMode || 'Single').toUpperCase()} ${(table.gameMode || 'Single') !== 'Century' ? ((table.gameMode || 'Single') === 'Single' ? '25m Limit' : '35m Limit') : 'No Limit'}
+                </div>
             </div>
 
             ${table.gameMode === 'Century' ? `
@@ -284,20 +292,55 @@ const renderTables = () => {
                 </div>
             ` : ''}
 
-            <div class="actions" style="margin-top: auto; display: flex; gap: 0.5rem; flex-wrap: wrap;">
+            <div class="actions" style="margin-top: auto; display: flex; flex-direction: column; gap: 0.5rem;">
+                
+                <!-- Quick Actions Matrix -->
+                <div class="quick-actions-row">
+                    <div class="quick-action-btn green" onclick="if(${isRunning}) showToast('Service Called for Table ${table.id}', 'success')">
+                        <span style="font-size: 1rem;">📞</span>
+                        CALL SERVICE
+                    </div>
+                    <div class="quick-action-btn" onclick="if(${isRunning}) showToast('Snack Menu Opened for Table ${table.id}', 'success')">
+                        <span style="font-size: 1rem;">🍔</span>
+                        ADD SNACK
+                    </div>
+                    ${isRunning && table.gameMode !== 'Century' ? `
+                    <div class="quick-action-btn" onclick="showToast('Time Extended by 10m', 'success')">
+                        <span style="font-size: 1rem;">⏱️</span>
+                        EXTEND TIME
+                    </div>
+                    <div class="quick-action-btn red" onclick="showToast('Table ${table.id} Paused', 'error')">
+                        <span style="font-size: 1rem;">⏸️</span>
+                        PAUSE
+                    </div>
+                    ` : ''}
+                </div>
+
+                <div style="display: flex; gap: 0.5rem;">
                 ${isRunning ?
                 `
-                <button class="btn btn-cash" style="flex: 1; padding: 0.5rem;" onclick="openTransferModal(${table.id})">Transfer</button>
-                <button class="btn btn-end" style="flex: 2; padding: 0.5rem;" onclick="endSession(${table.id})">End Session</button>
+                <button class="btn btn-cash" style="flex: 1; padding: 0.75rem;" onclick="openTransferModal(${table.id})">Transfer</button>
+                <button class="btn btn-end" style="flex: 2; padding: 0.75rem;" onclick="endSession(${table.id})">END SESSION <span style="font-size:1.1rem">🏁</span></button>
                 ` :
-                (hasPerm('add') ? `<button class="btn btn-start" id="start-btn-${table.id}" style="flex: 1; padding: 0.5rem;" onclick="startSession(${table.id})" disabled>Start Session</button>` : `<button class="btn" disabled style="opacity:0.5; cursor:not-allowed; flex: 1;">Access Restricted</button>`)
+                (hasPerm('add') ? `<button class="btn btn-start" id="start-btn-${table.id}" style="padding: 0.75rem;" onclick="startSession(${table.id})" disabled>START SESSION</button>` : `<button class="btn" disabled style="opacity:0.5; cursor:not-allowed;">Access Restricted</button>`)
             }
+                </div>
             </div>
             
             <div class="results-container" id="results-${table.id}"></div>
         `;
 
-        grid.appendChild(card);
+        // Route cards mathematically to the 3 columns
+        if (colLeft && [1, 2, 3].includes(table.id)) {
+            colLeft.appendChild(card);
+        } else if (colRight && [4, 5, 8].includes(table.id)) {
+            colRight.appendChild(card);
+        } else if (colCenterBottom && [6, 7].includes(table.id)) {
+            colCenterBottom.appendChild(card);
+        } else if (colLeft) {
+            // Fallback
+            colLeft.appendChild(card);
+        }
 
         if (!isRunning) {
             // Need a slight delay to ensure DOM is fully painted before checking inputs by ID
@@ -305,7 +348,8 @@ const renderTables = () => {
         }
     });
 
-    document.getElementById('active-tables-count').textContent = `Active Tables: ${activeCount}`;
+    const activeBadge = document.getElementById('active-tables-badge');
+    if (activeBadge) activeBadge.textContent = `${activeCount}/8`;
 
     // Close autocomplete lists when clicking outside
     document.addEventListener("click", function (e) {
@@ -314,7 +358,35 @@ const renderTables = () => {
 
     // Start interval for elapsed time update if any table is active
     updateElapsedTimes();
+
+    // Render the custom live feed text
+    renderLiveFeed();
 };
+
+const renderLiveFeed = () => {
+    const feedDisplay = document.getElementById('live-feed-display');
+    if (!feedDisplay) return;
+
+    // Get from local storage or set default
+    const rawFeed = localStorage.getItem('liveFeedText') || "Welcome to JR Snooker Lounge | Enjoy your premium experience | Book your tables at the counter.";
+
+    // Parse pipes (|) or newlines into separate paragraphs
+    const messages = rawFeed.split(/\||\n/).map(s => s.trim()).filter(s => s.length > 0);
+
+    let html = '';
+    messages.forEach(msg => {
+        html += `<p>${msg}</p>`;
+    });
+
+    feedDisplay.innerHTML = html;
+};
+
+// Listen for updates from the Admin panel to sync across tabs natively
+window.addEventListener('storage', (e) => {
+    if (e.key === 'liveFeedText') {
+        renderLiveFeed();
+    }
+});
 
 // --- Phase 6 & Phase 10: Dynamic UI Logic ---
 const generatePlayerInputsHtml = (table, isRunning) => {
@@ -338,6 +410,11 @@ const generatePlayerInputsHtml = (table, isRunning) => {
             badgeHtml = `<span style="position: absolute; right: 10px; top: 12px; background: var(--accent-blue); color: white; padding: 2px 6px; border-radius: 4px; font-size: 0.7rem; font-weight: bold; pointer-events: none;">A</span>`;
         } else if (profile.badge === 'T') {
             badgeHtml = `<span style="position: absolute; right: 10px; top: 12px; background: #eab308; color: white; padding: 2px 6px; border-radius: 4px; font-size: 0.7rem; font-weight: bold; pointer-events: none;">T</span>`;
+        }
+
+        // Custom Feature: Ledger Indicator
+        if (profile.balance > 0) {
+            badgeHtml += `<span style="position: absolute; right: 10px; bottom: -18px; color: var(--accent-red); font-size: 0.7rem; font-weight: bold; pointer-events: none;" title="Pending Ledger: Rs. ${profile.balance}">Pending: Rs. ${profile.balance}</span>`;
         }
 
         if (table.gameMode === 'Century' && table.centuryType === 'Team') {
@@ -415,7 +492,7 @@ const updateStartButtonState = (tableId) => {
         }
     }
 
-    // Flexible Player Boxes logic: Minimum 2 players required to start any game
+    // Flexible Player Boxes logic: Minimum 2 players required to start any game (Double/Century included)
     const minRequired = 2;
     const canStart = filledCount >= minRequired;
 
@@ -693,22 +770,47 @@ const executeStartSession = () => {
             }, 500);
         }
 
-        // Membership Expiry Warning (10 Days or less)
+        // Membership Expiry Warning (5 Days or less)
         const annualMatch = annuals.find(a => a.name.toLowerCase() === pName.toLowerCase() || a.member_id === profile.member_id);
         if (annualMatch) {
             const timeRemaining = annualMatch.expiry_date - now;
-            if (timeRemaining > 0 && timeRemaining <= tenDaysMs) {
+            if (timeRemaining > 0 && timeRemaining <= (5 * 24 * 60 * 60 * 1000)) {
                 const daysLeft = Math.ceil(timeRemaining / (1000 * 60 * 60 * 24));
                 setTimeout(() => {
-                    alert(`WARNING: ${profile.name}'s Annual Membership expires in ${daysLeft} days!`);
+                    showCustomExpiryModal(profile.name, daysLeft);
                 }, 1000);
             } else if (timeRemaining <= 0) {
                 setTimeout(() => {
-                    alert(`WARNING: ${profile.name}'s Annual Membership HAS EXPIRED!`);
+                    showCustomExpiryModal(profile.name, 0, true);
                 }, 1000);
             }
         }
     });
+};
+
+const showCustomExpiryModal = (name, daysLeft, isExpired = false) => {
+    const modalId = 'expiry-warning-modal';
+    let modal = document.getElementById(modalId);
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = modalId;
+        modal.className = 'modal';
+        modal.innerHTML = `
+            <div class="modal-content" style="max-width: 400px; text-align: center; border: 2px solid var(--accent-red);">
+                <h2 style="color: var(--accent-red); margin-bottom: 1rem;">⚠️ Membership Warning</h2>
+                <div id="expiry-modal-body" style="margin-bottom: 1.5rem; line-height: 1.5;"></div>
+                <button class="btn btn-end" onclick="document.getElementById('${modalId}').style.display='none'">Dismiss</button>
+            </div>
+        `;
+        document.body.appendChild(modal);
+    }
+    const body = document.getElementById('expiry-modal-body');
+    if (isExpired) {
+        body.innerHTML = `<strong>${name}</strong>'s membership HAS EXPIRED! Please renew immediately.`;
+    } else {
+        body.innerHTML = `<strong>${name}</strong>'s membership is expiring in <strong>${daysLeft}</strong> days. Please renew soon.`;
+    }
+    modal.style.display = 'block';
 };
 
 const endSession = (tableId) => {
@@ -926,7 +1028,7 @@ const recalculateBill = (tableId) => {
         ` : ''}
         
         <div class="result-row highlight" style="margin-top: 0.5rem; padding-top: 0.5rem; border-top: 2px solid var(--accent-red); font-size: 1.25rem; font-weight: bold; color: white; background: var(--accent-red); padding: 0.5rem; border-radius: 4px;">
-            <span>TOTAL AMOUNT DUE:</span>
+            <span>TOTAL PAYABLE:</span>
             <span>Rs. ${finalAmountDue}</span>
         </div>
         
@@ -997,7 +1099,7 @@ const confirmPayment = (tableId, playerName, amount, mode) => {
         const playerIndex = players.findIndex(p => p.name === mappedPlayerName);
 
         const sessionData = window[`session_${tableId}`];
-        // If they chose credit again, they are adding the NEW CURRENT BILL to their existing debt
+        // If they chose credit, they are adding the NEW CURRENT BILL to their existing debt
         const newDebtAmount = sessionData ? sessionData.totalBill : amount;
 
         if (playerIndex !== -1) {
@@ -1018,7 +1120,8 @@ const confirmPayment = (tableId, playerName, amount, mode) => {
     } else {
         // Cash or Online => Daily Income Portal
         const sessionData = window[`session_${tableId}`];
-        const actualAmountCollected = sessionData ? sessionData.finalAmountDue : amount;
+        // Merge Logic: Collected amount is CURRENT BILL + PREVIOUS BALANCE
+        const actualAmountCollected = sessionData ? (sessionData.totalBill + sessionData.previousBalance + (sessionData.transferredAmount || 0)) : amount;
 
         // Clear their debt because they paid the Cumulative Total
         const players = getPlayers();
@@ -1114,18 +1217,17 @@ const updateElapsedTimes = () => {
 
                     if (totalMinutes >= limit) {
                         card.classList.remove('grace-period');
-                        // Time-Limit Popup Check
-                        if (!t.alertedLimit && t.gameMode !== 'Century') {
-                            t.alertedLimit = true;
-                            saveTablesState(tables); // persist the flag
-
-                            // Slight delay to ensure UI paints
-                            setTimeout(() => {
-                                const continueGame = confirm(`Table ${t.id} - Time Limit Reached (${limit} mins).\n\nContinue Game?`);
-                                if (!continueGame) {
-                                    endSession(t.id);
-                                }
-                            }, 500);
+                        
+                        // Precise Time-Limit Popup Check (Phase 10 / Step 5)
+                        // Trigger only at the exact minute mark
+                        if (!t.alertedLimit) {
+                            if ((t.gameMode === 'Single' && totalMinutes === 25) || 
+                                (t.gameMode === 'Double' && totalMinutes === 35)) {
+                                
+                                t.alertedLimit = true;
+                                saveTablesState(tables); 
+                                showTimerPopup(t.id, totalMinutes);
+                            }
                         }
                     } else if (totalMinutes >= graceThreshold) {
                         card.classList.add('grace-period');
@@ -1136,6 +1238,42 @@ const updateElapsedTimes = () => {
             }
         });
     };
+
+const showTimerPopup = (tableId, limit) => {
+    const modalId = `timer-popup-${tableId}`;
+    let modal = document.getElementById(modalId);
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = modalId;
+        modal.className = 'modal';
+        modal.innerHTML = `
+            <div class="modal-content" style="max-width: 450px; text-align: center; border: 2px solid var(--accent-blue);">
+                <h2 style="color: var(--accent-blue); margin-bottom: 1rem;">⏱️ Time Limit Reached</h2>
+                <div style="margin-bottom: 1.5rem; font-size: 1.1rem;">
+                    Table <strong>${tableId}</strong> has reached the <strong>${limit}:00</strong> minute limit.
+                    <br><br>
+                    Do you want to Stop or Continue?
+                </div>
+                <div style="display: flex; gap: 1rem;">
+                    <button class="btn btn-end" style="flex: 1;" onclick="handleTimerStop(${tableId})">STOP</button>
+                    <button class="btn btn-start" style="flex: 1;" onclick="handleTimerContinue(${tableId})">CONTINUE</button>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+    }
+    modal.style.display = 'block';
+};
+
+window.handleTimerStop = (tableId) => {
+    document.getElementById(`timer-popup-${tableId}`).style.display = 'none';
+    endSession(tableId);
+};
+
+window.handleTimerContinue = (tableId) => {
+    document.getElementById(`timer-popup-${tableId}`).style.display = 'none';
+    showToast(`Table ${tableId} session continued.`, 'success');
+};
 
     tick(); // Initial call
     timerInterval = setInterval(tick, 60000); // Only update every minute to save CPU
@@ -1173,20 +1311,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const hasElevated = user.role === 'admin' || (user.permissions && (user.permissions.edit || user.permissions.delete));
         if (hasElevated) {
-            // Inject Admin link dynamically into the nav bar
-            const nav = document.querySelector('.app-nav');
-            if (nav) {
-                const logoutLink = nav.querySelector('a[onclick*="logout"]');
-                const adminLink = document.createElement('a');
-                adminLink.href = 'admin.html';
-                adminLink.className = 'nav-link';
-                adminLink.textContent = 'Admin Panel';
-                adminLink.style.color = 'var(--accent-blue)';
-                if (logoutLink) {
-                    nav.insertBefore(adminLink, logoutLink);
-                } else {
-                    nav.appendChild(adminLink);
-                }
+            // Un-hide Admin link in the sidebar
+            const adminIcon = document.getElementById('admin-nav-icon');
+            if (adminIcon) {
+                adminIcon.style.display = 'flex';
             }
         }
     }
