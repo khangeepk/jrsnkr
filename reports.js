@@ -355,120 +355,184 @@ const calculateAnnualExpiry = () => {
     }
 };
 
-const fileToBase64 = (file) => {
+// Utility to process, compress and convert image to Base64
+const processImage = (file) => {
     return new Promise((resolve, reject) => {
+        if (!file) {
+            resolve(null);
+            return;
+        }
+
         const reader = new FileReader();
         reader.readAsDataURL(file);
-        reader.onload = () => resolve(reader.result);
-        reader.onerror = error => reject(error);
+        reader.onload = (event) => {
+            const img = new Image();
+            img.src = event.target.result;
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                const MAX_WIDTH = 400; // Limit size for localStorage safety
+                const MAX_HEIGHT = 400;
+                let width = img.width;
+                let height = img.height;
+
+                if (width > height) {
+                    if (width > MAX_WIDTH) {
+                        height *= MAX_WIDTH / width;
+                        width = MAX_WIDTH;
+                    }
+                } else {
+                    if (height > MAX_HEIGHT) {
+                        width *= MAX_HEIGHT / height;
+                        height = MAX_HEIGHT;
+                    }
+                }
+
+                canvas.width = width;
+                canvas.height = height;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, width, height);
+
+                // Compress to 0.7 quality
+                const compressedBase64 = canvas.toDataURL('image/jpeg', 0.7);
+                resolve(compressedBase64);
+            };
+            img.onerror = (err) => {
+                console.error("Image load error:", err);
+                reject(err);
+            };
+        };
+        reader.onerror = (err) => {
+            console.error("FileReader error:", err);
+            reject(err);
+        };
     });
 };
 
-const addAnnualMember = async () => {
-    const name = document.getElementById('annual-name').value.trim();
-    const phone = document.getElementById('annual-phone').value.trim();
-    const startDateInput = document.getElementById('annual-start').value;
-    const photoInput = document.getElementById('annual-photo').files[0];
+const addAnnualMember = async (event) => {
+    if (event) event.preventDefault();
+    
+    try {
+        const name = document.getElementById('annual-name').value.trim();
+        const phone = document.getElementById('annual-phone').value.trim();
+        const startDateInput = document.getElementById('annual-start').value;
+        const photoInput = document.getElementById('annual-photo').files[0];
 
-    if (!name || !phone || !startDateInput) {
-        showToast("Please fill all fields.", "error");
-        return;
+        if (!name || !phone || !startDateInput) {
+            showToast("Please fill all fields.", "error");
+            return;
+        }
+
+        showToast("Processing registration...", "info");
+
+        // Use the new compression utility
+        const photoBase64 = await processImage(photoInput);
+
+        const members = getAnnualMembers();
+        const startDateObj = new Date(startDateInput);
+        startDateObj.setHours(0, 0, 0, 0);
+        const startDate = startDateObj.getTime();
+        const expiryDate = startDate + (365 * 24 * 60 * 60 * 1000);
+
+        let nextNum = 1;
+        if (members.length > 0) {
+            const sortedIds = members.map(m => {
+                const parts = (m.member_id || '').split('-');
+                return parts.length === 3 ? parseInt(parts[2], 10) : 0;
+            }).filter(n => !isNaN(n));
+            if (sortedIds.length > 0) nextNum = Math.max(...sortedIds) + 1;
+        }
+        const memberId = `JR-A-${nextNum.toString().padStart(4, '0')}`;
+
+        members.push({
+            id: Date.now(),
+            member_id: memberId,
+            name,
+            phone,
+            type: 'Annual',
+            fee: 3000,
+            start_date: startDate,
+            expiry_date: expiryDate,
+            photo: photoBase64
+        });
+
+        saveAnnualMembers(members);
+        
+        // Critical UI Feedback
+        alert('Member Registered Successfully!');
+        showToast(`Registered Annual Member: ${name}`);
+
+        // Reset Form
+        document.getElementById('annual-name').value = '';
+        document.getElementById('annual-phone').value = '';
+        document.getElementById('annual-start').value = '';
+        document.getElementById('annual-expiry').value = '';
+        document.getElementById('annual-photo').value = '';
+
+        renderLibraryLogs();
+        renderMemberDirectory();
+    } catch (error) {
+        console.error("CRITICAL REGISTRATION ERROR (Annual):", error);
+        alert("Registration failed! Check console for details: " + error.message);
     }
-
-    let photoBase64 = null;
-    if (photoInput) {
-        photoBase64 = await fileToBase64(photoInput);
-    }
-
-    const members = getAnnualMembers();
-    const startDateObj = new Date(startDateInput);
-    startDateObj.setHours(0, 0, 0, 0);
-    const startDate = startDateObj.getTime();
-    const expiryDate = startDate + (365 * 24 * 60 * 60 * 1000);
-
-    let nextNum = 1;
-    if (members.length > 0) {
-        const sortedIds = members.map(m => {
-            const parts = (m.member_id || '').split('-');
-            return parts.length === 3 ? parseInt(parts[2], 10) : 0;
-        }).filter(n => !isNaN(n));
-        if (sortedIds.length > 0) nextNum = Math.max(...sortedIds) + 1;
-    }
-    const memberId = `JR-A-${nextNum.toString().padStart(4, '0')}`;
-
-    members.push({
-        id: Date.now(),
-        member_id: memberId,
-        name,
-        phone,
-        type: 'Annual',
-        fee: 3000,
-        start_date: startDate,
-        expiry_date: expiryDate,
-        photo: photoBase64
-    });
-
-    saveAnnualMembers(members);
-    showToast(`Registered Annual Member: ${name}`);
-
-    // Reset Form
-    document.getElementById('annual-name').value = '';
-    document.getElementById('annual-phone').value = '';
-    document.getElementById('annual-start').value = '';
-    document.getElementById('annual-expiry').value = '';
-    document.getElementById('annual-photo').value = '';
-
-    renderLibraryLogs();
-    renderMemberDirectory();
 };
 
-const addTournamentMember = async () => {
-    const name = document.getElementById('tour-name').value.trim();
-    const tourId = document.getElementById('tour-id').value.trim();
-    const status = document.getElementById('tour-status').value;
-    const photoInput = document.getElementById('tour-photo').files[0];
+const addTournamentMember = async (event) => {
+    if (event) event.preventDefault();
 
-    if (!name || !tourId) {
-        showToast("Please fill all fields.", "error");
-        return;
+    try {
+        const name = document.getElementById('tour-name').value.trim();
+        const tourId = document.getElementById('tour-id').value.trim();
+        const status = document.getElementById('tour-status').value;
+        const photoInput = document.getElementById('tour-photo').files[0];
+
+        if (!name || !tourId) {
+            showToast("Please fill all fields.", "error");
+            return;
+        }
+
+        showToast("Processing registration...", "info");
+
+        // Use the new compression utility
+        const photoBase64 = await processImage(photoInput);
+
+        const members = getTournamentMembers();
+        let nextNum = 5001;
+        if (members.length > 0) {
+            const sortedIds = members.map(m => {
+                const parts = (m.member_id || '').split('-');
+                return parts.length === 3 ? parseInt(parts[2], 10) : 5000;
+            }).filter(n => !isNaN(n));
+            if (sortedIds.length > 0) nextNum = Math.max(...sortedIds) + 1;
+        }
+        const memberId = `JR-T-${nextNum}`;
+
+        members.push({
+            id: Date.now(),
+            member_id: memberId,
+            name,
+            tournament_id: tourId,
+            type: 'Tournament',
+            fee: 1500,
+            status,
+            photo: photoBase64
+        });
+
+        saveTournamentMembers(members);
+        
+        // Critical UI Feedback
+        alert('Participant Registered Successfully!');
+        showToast(`Registered Tournament Participant: ${name}`);
+
+        document.getElementById('tour-name').value = '';
+        document.getElementById('tour-id').value = '';
+        document.getElementById('tour-photo').value = '';
+
+        renderLibraryLogs();
+        renderMemberDirectory();
+    } catch (error) {
+        console.error("CRITICAL REGISTRATION ERROR (Tournament):", error);
+        alert("Registration failed! Check console for details: " + error.message);
     }
-
-    let photoBase64 = null;
-    if (photoInput) {
-        photoBase64 = await fileToBase64(photoInput);
-    }
-
-    const members = getTournamentMembers();
-    let nextNum = 5001;
-    if (members.length > 0) {
-        const sortedIds = members.map(m => {
-            const parts = (m.member_id || '').split('-');
-            return parts.length === 3 ? parseInt(parts[2], 10) : 5000;
-        }).filter(n => !isNaN(n));
-        if (sortedIds.length > 0) nextNum = Math.max(...sortedIds) + 1;
-    }
-    const memberId = `JR-T-${nextNum}`;
-
-    members.push({
-        id: Date.now(),
-        member_id: memberId,
-        name,
-        tournament_id: tourId,
-        type: 'Tournament',
-        fee: 1500,
-        status,
-        photo: photoBase64
-    });
-
-    saveTournamentMembers(members);
-    showToast(`Registered Tournament Participant: ${name}`);
-
-    document.getElementById('tour-name').value = '';
-    document.getElementById('tour-id').value = '';
-    document.getElementById('tour-photo').value = '';
-
-    renderLibraryLogs();
-    renderMemberDirectory();
 };
 
 // --- Phase 7: CSV Generation & Daily Reset ---
@@ -834,6 +898,9 @@ const printIDCard = () => {
 };
 
 window.calculateAnnualExpiry = calculateAnnualExpiry;
+window.processImage = processImage;
+window.addAnnualMember = addAnnualMember;
+window.addTournamentMember = addTournamentMember;
 window.viewDigitalID = viewDigitalID;
 window.closeIDCardModal = closeIDCardModal;
 window.printIDCard = printIDCard;
