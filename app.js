@@ -1094,36 +1094,44 @@ const confirmPayment = (tableId, playerName, amount, mode) => {
         }
     }
 
+    const dailyIncome = JSON.parse(localStorage.getItem('dailyIncome') || '[]');
+    const sessionData = window[`session_${tableId}`];
+    
+    // Total calculation (Current Bill + any transfers/balances)
+    const transactionAmount = sessionData ? (sessionData.totalBill + (sessionData.transferredAmount || 0)) : amount;
+    const totalWithBalance = transactionAmount + (sessionData ? sessionData.previousBalance : 0);
+
     if (mode === 'Credit') {
         const players = getPlayers();
         const playerIndex = players.findIndex(p => p.name === mappedPlayerName);
 
-        const sessionData = window[`session_${tableId}`];
-        // If they chose credit, they are adding the NEW CURRENT BILL to their existing debt
-        const newDebtAmount = sessionData ? sessionData.totalBill : amount;
-
         if (playerIndex !== -1) {
-            players[playerIndex].balance = (players[playerIndex].balance || 0) + newDebtAmount;
-            if (profile.member_id) players[playerIndex].member_id = profile.member_id; // link it
+            players[playerIndex].balance = (players[playerIndex].balance || 0) + transactionAmount;
+            if (profile.member_id) players[playerIndex].member_id = profile.member_id;
         } else {
-            // Create a record
             players.push({
                 id: Date.now(),
                 name: mappedPlayerName,
                 status: profile.status,
-                balance: newDebtAmount,
+                balance: transactionAmount,
                 member_id: profile.member_id
             });
         }
         savePlayers(players);
-        showToast(`Rs.${newDebtAmount} added to ${mappedPlayerName}'s pending balance.`, 'error');
+        
+        // Push to Daily Ledger as PENDING
+        dailyIncome.push({
+            id: Date.now(),
+            date: new Date().toISOString(),
+            playerName: mappedPlayerName,
+            amount: transactionAmount,
+            mode: 'Credit',
+            is_pending: true
+        });
+        
+        showToast(`Rs.${transactionAmount} added to ${mappedPlayerName}'s debt. Marking in Ledger.`, 'error');
     } else {
-        // Cash or Online => Daily Income Portal
-        const sessionData = window[`session_${tableId}`];
-        // Merge Logic: Collected amount is CURRENT BILL + PREVIOUS BALANCE
-        const actualAmountCollected = sessionData ? (sessionData.totalBill + sessionData.previousBalance + (sessionData.transferredAmount || 0)) : amount;
-
-        // Clear their debt because they paid the Cumulative Total
+        // Cash or Online => Pay current bill + clear previous balance
         const players = getPlayers();
         const playerIndex = players.findIndex(p => p.name === mappedPlayerName);
         if (playerIndex !== -1) {
@@ -1131,18 +1139,20 @@ const confirmPayment = (tableId, playerName, amount, mode) => {
             savePlayers(players);
         }
 
-        const dailyIncome = JSON.parse(localStorage.getItem('dailyIncome') || '[]');
         dailyIncome.push({
             id: Date.now(),
             date: new Date().toISOString(),
             playerName: mappedPlayerName,
-            amount: actualAmountCollected,
-            mode: mode
+            amount: totalWithBalance,
+            mode: mode,
+            is_pending: false
         });
-        localStorage.setItem('dailyIncome', JSON.stringify(dailyIncome));
-        showToast(`Payment of Rs.${actualAmountCollected} received via ${mode}. Debt cleared if any.`);
-        updateDashboardMetrics();
+        
+        showToast(`Payment of Rs.${totalWithBalance} received via ${mode}. Debt cleared.`);
     }
+
+    localStorage.setItem('dailyIncome', JSON.stringify(dailyIncome));
+    updateDashboardMetrics();
 
     // Advance table callback
     const resetBtn = document.getElementById(`reset-btn-${tableId}`);
@@ -1154,9 +1164,9 @@ const updateDashboardMetrics = () => {
     const tables = getTablesState();
     const activeCount = tables.filter(t => t.isActive).length;
 
-    // 2. Today's Cash Collection
+    // 2. Today's Cash Collection (Received ONLY)
     const dailyIncome = JSON.parse(localStorage.getItem('dailyIncome') || '[]');
-    const cashCollection = dailyIncome.reduce((sum, item) => sum + item.amount, 0);
+    const cashCollection = dailyIncome.filter(item => !item.is_pending).reduce((sum, item) => sum + item.amount, 0);
 
     // 3. Pending Dues (Total Player Balances)
     const players = getPlayers();
@@ -1488,6 +1498,19 @@ const executeTransfer = () => {
     showToast(`Successfully transferred Rs. ${totalBill} from Table ${sourceTable.id} to Table ${targetTable.id}.`);
 };
 // For testing calculation without waiting 25m, expose a debug function to window:
+const showCCTVModal = () => {
+    const modal = document.getElementById('cctv-modal');
+    if (modal) modal.style.display = 'block';
+};
+
+const closeCCTVModal = () => {
+    const modal = document.getElementById('cctv-modal');
+    if (modal) modal.style.display = 'none';
+};
+
+window.showCCTVModal = showCCTVModal;
+window.closeCCTVModal = closeCCTVModal;
+window.logout = logout;
 window.debugAgeTable = (tableId, minutesToAge) => {
     const tables = getTablesState();
     const idx = tables.findIndex(t => t.id === tableId);

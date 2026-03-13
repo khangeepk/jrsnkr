@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>JR Snooker Lounge</title>
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="style.css?v=2.1">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -18,38 +18,82 @@
                 <div style="display: flex; align-items: center; gap: 0.75rem;">
                     <img src="logo.png" alt="JR Snooker Logo" style="height: 64px; width: auto; border-radius: 8px;">
                 </div>
-                <nav class="app-nav">
-                    <button id="theme-toggle" class="btn"
-                        style="padding: 0.5rem; width: auto; background: transparent; border: 1px solid var(--border-color); color: var(--text-primary);"
-                        title="Toggle Theme">
-                        🌓
-                    </button>
-                    <a href="index.html" class="nav-link active">Dashboard</a>
-                    <a href="reports.html" class="nav-link">Reports</a>
-                    <a href="#" class="nav-link" onclick="logout(); return false;"
-                        style="color: var(--accent-red);">Logout</a>
-                </nav>
             </div>
-            <div class="stats" style="flex-wrap: wrap; gap: 0.5rem; justify-content: flex-end;">
-                <span id="active-tables-badge"
-                    style="color: var(--accent-green); border-color: rgba(16, 185, 129, 0.3);">Active Tables: 0/8</span>
-                <span id="cash-collection-badge"
-                    style="color: var(--text-primary); border-color: var(--border-color);">Today's Cash: Rs. 0</span>
-                <span id="pending-dues-badge"
-                    style="color: var(--accent-red); border-color: rgba(239, 68, 68, 0.3);">Pending Dues: Rs. 0</span>
-                <span id="net-cash-badge" class="profit-badge"
-                    style="flex-basis: 100%; text-align: right; background: transparent; border: none; padding-right: 0; font-size: 1.1rem; color: var(--accent-blue);">Net
-                    Cash in Hand: Rs. 0</span>
+
+            <div class="stats">
+                <div class="active-ring-widget" id="active-tables-badge">0/8</div>
+
+                <div class="stat-widget">
+                    <span class="stat-title">Today's Cash</span>
+                    <span class="stat-value up" id="cash-collection-badge">Rs. 0</span>
+                </div>
+
+                <div class="stat-widget">
+                    <span class="stat-title">Net Cash in Hand</span>
+                    <span class="stat-value up" id="net-cash-badge">Rs. 0</span>
+                </div>
+
+                <div class="stat-widget" style="border-color: rgba(255, 170, 0, 0.3);">
+                    <span class="stat-title" style="color: var(--accent-warning);">Pending Dues ⚠️</span>
+                    <span class="stat-value warning" id="pending-dues-badge">Rs. 0</span>
+                </div>
             </div>
         </div>
     </header>
 
-    <main class="container">
-        <!-- Dashboard showing 8 tables -->
-        <div id="tables-grid" class="tables-grid">
-            <!-- Table cards inserted here dynamically via JS -->
-        </div>
-    </main>
+    <div class="app-layout">
+        <!-- Left Navigation Sidebar -->
+        <aside class="sidebar" style="margin-top: 1.5rem;">
+            <a href="index.html" class="sidebar-icon active" title="Dashboard">◫</a>
+            <a href="reports.html" class="sidebar-icon" title="Reports">📊</a>
+            <a href="admin.html" class="sidebar-icon" id="admin-nav-icon" title="Admin/Players"
+                style="display: none;">👥</a>
+            <div style="flex: 1;"></div>
+            <a href="#" class="sidebar-icon" onclick="logout(); return false;" style="color: var(--accent-red);"
+                title="Logout">➡</a>
+        </aside>
+
+        <!-- Main Dashboard Matrix -->
+        <main class="dashboard-grid">
+            <!-- Left Column (Tables 1, 4, 5) -->
+            <div class="col-left" id="col-left"></div>
+
+            <!-- Center Column (Live Feed + Tables 6, 7) -->
+            <div class="col-center" id="col-center">
+                <div class="feed-widget">
+                    <div class="feed-widget-overlay">
+                        <div class="feed-screen">
+                            <div class="feed-title">Live Feed & Club News</div>
+                            <div class="feed-content">
+                                <marquee direction="up" scrollamount="2" style="height: 100px;">
+                                    <div id="live-feed-display"
+                                        style="display: flex; flex-direction: column; gap: 0.5rem;">
+                                        <!-- Dynamically injected via app.js -->
+                                    </div>
+                                </marquee>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <!-- Bottom pair of tables in center -->
+                <div class="col-center-bottom" id="col-center-bottom"></div>
+            </div>
+
+            <!-- Right Column (Tables 8, 2, 3) -->
+            <div class="col-right" id="col-right"></div>
+        </main>
+
+        <!-- Right Quick Action Sidebar -->
+        <aside class="sidebar" style="margin-top: 1.5rem;">
+            <div class="sidebar-icon" onclick="location.href='hall-of-fame.html'" title="Top Players / Hall of Fame">👑</div>
+            <div class="sidebar-icon" onclick="location.href='announcements.html'" title="Announcements / SMS Portal">💬</div>
+            <div class="sidebar-icon" onclick="location.href='analytics.html'" title="Advanced Analytics">📈</div>
+            <div style="flex: 1;"></div>
+            <div class="sidebar-icon" onclick="showCCTVModal()" title="CCTV Links">📷</div>
+            <button id="theme-toggle" class="sidebar-icon" title="Toggle Theme"
+                style="background:transparent; border:none; cursor:pointer;">☀️</button>
+        </aside>
+    </div>
 
     <!-- Simple Toast Notification Container -->
     <div id="toast-container" class="toast-container"></div>
@@ -105,7 +149,37 @@
         </div>
     </div>
 
-    <script src="app.js"></script>
+    <!-- CCTV Modal -->
+    <div id="cctv-modal" class="modal">
+        <div class="modal-content" style="max-width: 500px; text-align: center;">
+            <div class="modal-header">
+                <h2>📹 CCTV Surveillance System</h2>
+                <button class="close-btn" onclick="closeCCTVModal()">&times;</button>
+            </div>
+            <div class="modal-body" style="padding: 2rem;">
+                <div style="font-size: 3rem; margin-bottom: 1rem;">🔒</div>
+                <h3 style="color: var(--accent-red); margin-bottom: 1rem;">Access Restricted</h3>
+                <p style="color: var(--text-secondary); margin-bottom: 1.5rem;">The digital live feed for CCTV is currently restricted to On-Site Admin access only.</p>
+                <div style="background: rgba(0,0,0,0.2); padding: 1rem; border-radius: 8px; border: 1px solid var(--border-color); text-align: left; font-size: 0.9rem;">
+                    <p><strong>System Status:</strong> <span style="color: var(--accent-green);">ONLINE</span></p>
+                    <p><strong>Active Cameras:</strong> 16 / 16</p>
+                    <p><strong>Recording:</strong> Active (H.265)</p>
+                </div>
+                <button class="btn btn-cash" style="margin-top: 1.5rem;" onclick="closeCCTVModal()">Acknowledged</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js?v=4.1"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            initDB();
+            setupTheme();
+            if (typeof renderTables === 'function') {
+                renderTables();
+            }
+        });
+    </script>
 </body>
 
 </html>

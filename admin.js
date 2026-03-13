@@ -57,6 +57,16 @@ const logout = () => {
     window.location.href = 'login.html';
 };
 
+const showCCTVModal = () => {
+    const modal = document.getElementById('cctv-modal');
+    if (modal) modal.style.display = 'block';
+};
+
+const closeCCTVModal = () => {
+    const modal = document.getElementById('cctv-modal');
+    if (modal) modal.style.display = 'none';
+};
+
 // --- Utils ---
 const showToast = (message, type = 'success') => {
     const container = document.getElementById('toast-container');
@@ -142,6 +152,38 @@ const handleAdminPassChange = (e) => {
     }
 };
 
+// ==========================================
+// 1.5 LIVE FEED & BROADCAST MANAGEMENT
+// ==========================================
+
+const handleLiveFeedUpdate = (e) => {
+    e.preventDefault();
+    const textArea = document.getElementById('live-feed-text');
+    if (!textArea) return;
+
+    const rawText = textArea.value.trim();
+    // Default fallback if empty
+    const finalFeed = rawText || "Welcome to JR Snooker Lounge | Enjoy your premium experience | Book your tables at the counter.";
+
+    // Store in localStorage
+    localStorage.setItem('liveFeedText', finalFeed);
+    showToast("Live Feed Broadcast Updated!", "success");
+
+    // Attempt graceful dispatch to dashboard if open
+    window.dispatchEvent(new Event('storage'));
+};
+
+// Initialize Admin Form with existing feed data
+document.addEventListener('DOMContentLoaded', () => {
+    const textArea = document.getElementById('live-feed-text');
+    if (textArea) {
+        const currentFeed = localStorage.getItem('liveFeedText');
+        if (currentFeed) {
+            textArea.value = currentFeed;
+        }
+    }
+});
+
 const handleStaffCreate = (e) => {
     e.preventDefault();
     const username = document.getElementById('new-staff-user').value.trim().toLowerCase();
@@ -191,37 +233,59 @@ const deleteUser = (index) => {
 
 const renderIncomeOverride = () => {
     const tbody = document.getElementById('income-override-tbody');
+    if (!tbody) return;
     tbody.innerHTML = '';
     const income = JSON.parse(localStorage.getItem('dailyIncome') || '[]');
 
     income.forEach((entry, index) => {
         const d = new Date(entry.date);
-        tbody.innerHTML += `
-            <tr>
-                <td>${d.toLocaleDateString()} <span style="color: var(--text-secondary); font-size: 0.8rem;">${d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span></td>
-                <td><strong>${entry.playerName || 'Table Session'}</strong></td>
-                <td style="color: var(--accent-green); font-weight: bold;">Rs. ${entry.amount}</td>
-                <td><span class="status-badge" style="background: transparent; border: 1px solid var(--border-color);">${entry.mode}</span></td>
-                <td>
-                    <div style="display: flex; gap: 0.5rem; justify-content: flex-end;">
-                        ${hasPerm('edit') ? `<button class="btn btn-online" style="padding: 0.2rem 0.6rem; font-size: 0.8rem;" onclick="openEditModal('income', ${index})">Edit</button>` : `<button class="btn btn-online" style="padding: 0.2rem 0.6rem; font-size: 0.8rem; opacity: 0.5; cursor: not-allowed;" disabled>No Edit</button>`}
-                        ${hasPerm('delete') ? `<button class="btn btn-end" style="padding: 0.2rem 0.6rem; font-size: 0.8rem;" onclick="deleteIncomeRow(${index})">Delete</button>` : `<button class="btn btn-end" style="padding: 0.2rem 0.6rem; font-size: 0.8rem; opacity: 0.5; cursor: not-allowed;" disabled>No Delete</button>`}
-                    </div>
-                </td>
-            </tr>
+        const tr = document.createElement('tr');
+
+        const canEdit = hasPerm('edit');
+        const canDelete = hasPerm('delete');
+
+        const editBtn = canEdit
+            ? `<button class="btn btn-online" style="padding: 0.2rem 0.6rem; font-size: 0.8rem;" onclick="openEditModal('income', ${index})">Edit</button>`
+            : `<button class="btn btn-online" style="padding: 0.2rem 0.6rem; font-size: 0.8rem; opacity: 0.5; cursor: not-allowed;" disabled>No Edit</button>`;
+
+        const delBtn = canDelete
+            ? `<button class="btn btn-end" style="padding: 0.2rem 0.6rem; font-size: 0.8rem;" data-id="${entry.id}">Delete</button>`
+            : `<button class="btn btn-end" style="padding: 0.2rem 0.6rem; font-size: 0.8rem; opacity: 0.5; cursor: not-allowed;" disabled>No Delete</button>`;
+
+        tr.innerHTML = `
+            <td>${d.toLocaleDateString()} <span style="color: var(--text-secondary); font-size: 0.8rem;">${d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span></td>
+            <td><strong>${entry.playerName || 'Table Session'}</strong></td>
+            <td style="color: var(--accent-green); font-weight: bold;">Rs. ${entry.amount}</td>
+            <td><span class="status-badge" style="background: transparent; border: 1px solid var(--border-color);">${entry.mode}</span></td>
+            <td>
+                <div style="display: flex; gap: 0.5rem; justify-content: flex-end;">
+                    ${editBtn}
+                    ${delBtn}
+                </div>
+            </td>
         `;
+
+        tbody.appendChild(tr);
+        if (canDelete) {
+            const btn = tr.querySelector('[data-id]');
+            if (btn) {
+                btn.addEventListener('click', () => deleteIncomeByID(entry.id));
+            }
+        }
     });
 };
 
-const deleteIncomeRow = (index) => {
-    if (confirm("DANGER: Deleting this income row permanently alters today's calculated revenue. Proceed?")) {
+const deleteIncomeByID = (entryId) => {
+    if (confirm("DANGER: Deleting this income row permanently alters today's revenue. Proceed?")) {
         let income = JSON.parse(localStorage.getItem('dailyIncome') || '[]');
-        income.splice(index, 1);
+        income = income.filter(e => e.id !== entryId);
         localStorage.setItem('dailyIncome', JSON.stringify(income));
         renderIncomeOverride();
-        showToast("Income row eradicated.", "error");
+        showToast("Income row deleted.", "error");
+        window.dispatchEvent(new Event('storage'));
     }
 };
+window.deleteIncomeByID = deleteIncomeByID;
 
 // ==========================================
 // 3. DATA OVERRIDE: EXPENSES
@@ -229,45 +293,61 @@ const deleteIncomeRow = (index) => {
 
 const renderExpenseOverride = () => {
     const tbody = document.getElementById('expense-override-tbody');
+    if (!tbody) return;
     tbody.innerHTML = '';
     const expenses = JSON.parse(localStorage.getItem('expenses') || '[]');
 
-    expenses.forEach((entry, index) => {
-        const d = new Date(entry.date);
-        let displayCat = '';
-        if (entry.category === 'office') displayCat = 'Office Utility';
-        else if (entry.category === 'utility') displayCat = 'Utility Bills';
-        else if (entry.category === 'repair') displayCat = 'Repair/Maintenance';
-        else if (entry.category === 'tax') displayCat = 'Tax';
-        else if (entry.category === 'salary') displayCat = 'Staff Salary';
-        else displayCat = entry.category;
+    expenses.forEach((entry) => {
+        const catMap = {
+            'office': 'Office Utility', 'utility': 'Utility Bills',
+            'repair': 'Repair/Maintenance', 'tax': 'Tax', 'salary': 'Staff Salary'
+        };
+        const displayCat = catMap[entry.category] || entry.category || 'Unknown';
+        const d = new Date(entry.id || entry.date);
 
-        tbody.innerHTML += `
-            <tr>
-                <td>${d.toLocaleDateString()}</td>
-                <td><strong>${displayCat}</strong></td>
-                <td><span style="color: var(--text-secondary);">${entry.description || '-'}</span></td>
-                <td style="color: var(--accent-red); font-weight: bold;">Rs. ${entry.amount}</td>
-                <td>
-                    <div style="display: flex; gap: 0.5rem; justify-content: flex-end;">
-                        ${hasPerm('edit') ? `<button class="btn btn-online" style="padding: 0.2rem 0.6rem; font-size: 0.8rem;" onclick="openEditModal('expense', ${index})">Edit</button>` : `<button class="btn btn-online" style="padding: 0.2rem 0.6rem; font-size: 0.8rem; opacity: 0.5; cursor: not-allowed;" disabled>No Edit</button>`}
-                        ${hasPerm('delete') ? `<button class="btn btn-end" style="padding: 0.2rem 0.6rem; font-size: 0.8rem;" onclick="deleteExpenseRow(${index})">Delete</button>` : `<button class="btn btn-end" style="padding: 0.2rem 0.6rem; font-size: 0.8rem; opacity: 0.5; cursor: not-allowed;" disabled>No Delete</button>`}
-                    </div>
-                </td>
-            </tr>
+        const canEdit = hasPerm('edit');
+        const canDelete = hasPerm('delete');
+
+        const editBtn = canEdit
+            ? `<button class="btn btn-online" style="padding: 0.2rem 0.6rem; font-size: 0.8rem;" onclick="openEditModal('expense', ${expenses.indexOf(entry)})">Edit</button>`
+            : `<button class="btn btn-online" style="padding: 0.2rem 0.6rem; font-size: 0.8rem; opacity: 0.5; cursor: not-allowed;" disabled>No Edit</button>`;
+
+        const delBtn = canDelete
+            ? `<button class="btn btn-end" style="padding: 0.2rem 0.6rem; font-size: 0.8rem;" data-expid="${entry.id}">Delete</button>`
+            : `<button class="btn btn-end" style="padding: 0.2rem 0.6rem; font-size: 0.8rem; opacity: 0.5; cursor: not-allowed;" disabled>No Delete</button>`;
+
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td>${d.toLocaleDateString()}</td>
+            <td><strong>${displayCat}</strong></td>
+            <td><span style="color: var(--text-secondary);">${entry.description || '-'}</span></td>
+            <td style="color: var(--accent-red); font-weight: bold;">Rs. ${entry.amount}</td>
+            <td>
+                <div style="display: flex; gap: 0.5rem; justify-content: flex-end;">
+                    ${editBtn}
+                    ${delBtn}
+                </div>
+            </td>
         `;
+        tbody.appendChild(tr);
+        if (canDelete) {
+            const btn = tr.querySelector('[data-expid]');
+            if (btn) btn.addEventListener('click', () => deleteExpenseByID(entry.id));
+        }
     });
 };
 
-const deleteExpenseRow = (index) => {
+const deleteExpenseByID = (entryId) => {
     if (confirm("DANGER: Deleting this expense adjusts the Net Profit permanently. Proceed?")) {
         let expenses = JSON.parse(localStorage.getItem('expenses') || '[]');
-        expenses.splice(index, 1);
+        expenses = expenses.filter(e => e.id !== entryId);
         localStorage.setItem('expenses', JSON.stringify(expenses));
         renderExpenseOverride();
-        showToast("Expense row eradicated.", "error");
+        showToast("Expense row deleted.", "error");
+        window.dispatchEvent(new Event('storage'));
     }
 };
+window.deleteExpenseByID = deleteExpenseByID;
 
 // ==========================================
 // 4. PLAYER LEDGER & DEBTS
@@ -437,3 +517,8 @@ document.addEventListener('DOMContentLoaded', () => {
     renderExpenseOverride();
     renderPlayerLedger();
 });
+
+window.showCCTVModal = showCCTVModal;
+window.closeCCTVModal = closeCCTVModal;
+window.logout = logout;
+window.setupTheme = setupTheme;

@@ -12,6 +12,16 @@ const logout = () => {
     window.location.href = 'login.html';
 };
 
+const showCCTVModal = () => {
+    const modal = document.getElementById('cctv-modal');
+    if (modal) modal.style.display = 'block';
+};
+
+const closeCCTVModal = () => {
+    const modal = document.getElementById('cctv-modal');
+    if (modal) modal.style.display = 'none';
+};
+
 const setupTheme = () => {
     const savedTheme = localStorage.getItem('theme') || 'dark';
     if (savedTheme === 'light') {
@@ -70,56 +80,69 @@ const showToast = (message, type = 'success') => {
 const renderIncomePortal = () => {
     const income = getDailyIncome();
     const tbody = document.querySelector('#income-table tbody');
+    if (!tbody) return;
     tbody.innerHTML = '';
 
     // Sort newest first
     const sorted = [...income].sort((a, b) => b.id - a.id);
-    let total = 0;
+    let totalReceived = 0;
+    let totalPending = 0;
 
-    // Add Delete headers if elevated
-    const thead = document.querySelector('#income-table thead tr');
-    if (thead.cells.length === 4) {
-        const th = document.createElement('th');
-        th.innerText = 'Action';
-        th.style.textAlign = 'right';
-        thead.appendChild(th);
-    }
+    const userStr = localStorage.getItem('currentUser');
+    const user = userStr ? JSON.parse(userStr) : null;
+    const hasElevated = user && (user.role === 'admin' || (user.permissions && user.permissions.delete));
 
     sorted.forEach((item) => {
-        total += item.amount;
+        const isPending = item.is_pending === true;
+        if (isPending) {
+            totalPending += item.amount;
+        } else {
+            totalReceived += item.amount;
+        }
+
         const tr = document.createElement('tr');
+        if (isPending) {
+            tr.style.background = 'rgba(255, 51, 51, 0.05)';
+        }
 
         const dateObj = new Date(item.date);
         const timeStr = dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
-        // Find true original index in the unsorted array
         const realIndex = income.findIndex(x => x.id === item.id);
 
         let deleteBtnHtml = '';
-        const userStr = localStorage.getItem('currentUser');
-        if (userStr) {
-            const user = JSON.parse(userStr);
-            const hasElevated = user.role === 'admin' || (user.permissions && user.permissions.delete);
-            if (hasElevated) {
-                deleteBtnHtml = `<button class="btn btn-end" style="padding: 0.2rem 0.6rem; font-size: 0.8rem; margin-left: 1rem;" onclick="deleteIncomeEntry(${realIndex})">Delete</button>`;
-            }
+        if (hasElevated) {
+            deleteBtnHtml = `<button class="btn btn-end" style="padding: 0.2rem 0.6rem; font-size: 0.8rem;" onclick="deleteIncomeEntry(${realIndex})">Delete</button>`;
         }
+
+        const amountColor = isPending ? 'var(--accent-red)' : 'var(--accent-green)';
+        const duesText = isPending ? `Rs. ${item.amount}` : '-';
+        const receivedText = isPending ? '-' : `Rs. ${item.amount}`;
 
         tr.innerHTML = `
             <td>${timeStr}</td>
             <td><strong>${item.playerName}</strong></td>
-            <td style="color: var(--accent-green); font-weight: 500;">Rs. ${item.amount}</td>
-            <td style="display: flex; justify-content: space-between; align-items: center;">
+            <td style="color: ${isPending ? 'var(--text-secondary)' : 'var(--accent-green)'}; font-weight: 500;">${receivedText}</td>
+            <td style="color: var(--accent-red); font-weight: 600;">${duesText}</td>
+            <td>
                 <span style="font-size: 0.8rem; padding: 0.2rem 0.5rem; background: rgba(0,0,0,0.2); border-radius: 4px; border: 1px solid var(--border-color);">
                     ${item.mode}
                 </span>
-                ${deleteBtnHtml}
             </td>
+            <td>${deleteBtnHtml}</td>
         `;
         tbody.appendChild(tr);
     });
 
-    document.getElementById('total-income').innerText = `Total: Rs. ${total}`;
+    const receivedEl = document.getElementById('total-received');
+    const pendingEl = document.getElementById('total-pending');
+    
+    if (receivedEl) receivedEl.innerText = `Received: Rs. ${totalReceived}`;
+    if (pendingEl) pendingEl.innerText = `Pending: Rs. ${totalPending}`;
+    
+    // Fallback for old UI components
+    const oldIncomeEl = document.getElementById('total-income');
+    if (oldIncomeEl) oldIncomeEl.innerText = `Total: Rs. ${totalReceived + totalPending}`;
 };
 
 window.deleteIncomeEntry = (index) => {
@@ -741,6 +764,8 @@ const renderMemberDirectory = () => {
         if (annuals.length === 0) {
             annualTbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color: var(--text-secondary);">No Annual Members registered yet.</td></tr>`;
         } else {
+            const players = JSON.parse(localStorage.getItem('players') || '[]');
+
             annuals.forEach(m => {
                 const startDate = m.start_date ? new Date(m.start_date).toLocaleDateString() : '-';
                 const expiryDate = m.expiry_date ? new Date(m.expiry_date).toLocaleDateString() : (m.start_date ? new Date(new Date(m.start_date).setFullYear(new Date(m.start_date).getFullYear() + 1)).toLocaleDateString() : '-');
@@ -750,6 +775,10 @@ const renderMemberDirectory = () => {
                 const statusColor = isExpired ? 'var(--accent-red)' : 'var(--accent-green)';
                 const statusText = isExpired ? 'Expired' : 'Active';
 
+                // Lookup balance
+                const player = players.find(p => (p.member_id && p.member_id === m.member_id) || (p.name && p.name.toLowerCase() === m.name.toLowerCase()));
+                const balance = player ? (player.balance || 0) : 0;
+
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
                     <td><code style="color: var(--accent-blue);">${m.member_id || '-'}</code></td>
@@ -757,8 +786,14 @@ const renderMemberDirectory = () => {
                     <td>${m.phone || '-'}</td>
                     <td>${startDate}</td>
                     <td>${expiryDate}</td>
-                    <td><span style="color: ${statusColor}; font-weight: 600; margin-right: 1rem;">${statusText}</span>
-                        <button class="btn btn-online" style="display:inline-block; width:auto; padding:0.25rem 0.75rem; font-size: 0.75rem;" onclick="viewDigitalID('${m.member_id}', 'Annual')">View Card</button>
+                    <td><span style="color: ${statusColor}; font-weight: 600;">${statusText}</span></td>
+                    <td style="color: ${balance > 0 ? 'var(--accent-red)' : 'var(--text-secondary)'}; font-weight: 600;">Rs. ${balance}</td>
+                    <td>
+                        <div style="display: flex; gap: 0.5rem;">
+                            <button class="btn btn-online" style="width:auto; padding:0.25rem 0.5rem; font-size: 0.8rem;" onclick="viewDigitalID('${m.member_id}', 'Annual')" title="View Card">🪪</button>
+                            <button class="btn btn-online" style="width:auto; padding:0.25rem 0.5rem; font-size: 0.8rem; background: var(--accent-blue);" onclick="openEditMemberModal('${m.member_id}', 'Annual')" title="Edit Member">✏️</button>
+                            <button class="btn btn-end" style="width:auto; padding:0.25rem 0.5rem; font-size: 0.8rem;" onclick="deleteMember('${m.member_id}', 'Annual')" title="Delete Member">🗑️</button>
+                        </div>
                     </td>
                 `;
                 annualTbody.appendChild(tr);
@@ -773,17 +808,29 @@ const renderMemberDirectory = () => {
         if (tours.length === 0) {
             tourTbody.innerHTML = `<tr><td colspan="4" style="text-align:center; color: var(--text-secondary);">No Tournament Participants registered yet.</td></tr>`;
         } else {
+            const players = JSON.parse(localStorage.getItem('players') || '[]');
+
             tours.forEach(m => {
                 const isPaid = (m.status || '').toLowerCase() === 'paid';
                 const badgeColor = isPaid ? 'var(--accent-green)' : 'var(--accent-warning)';
+
+                // Lookup balance by member_id or name
+                const player = players.find(p => (p.member_id && p.member_id === m.member_id) || (p.name && p.name.toLowerCase() === m.name.toLowerCase()));
+                const balance = player ? (player.balance || 0) : 0;
+
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
                     <td><code style="color: var(--accent-warning);">${m.member_id || '-'}</code></td>
                     <td><strong>${m.name || '-'}</strong></td>
                     <td>${m.tournament_id || '-'}</td>
-                    <td style="display: flex; justify-content: space-between; align-items: center;">
-                        <span style="color: ${badgeColor}; font-weight: 600;">${m.status || 'Unknown'}</span>
-                        <button class="btn btn-online" style="display:inline-block; width:auto; padding:0.25rem 0.75rem; font-size: 0.75rem;" onclick="viewDigitalID('${m.member_id}', 'Tournament')">View Card</button>
+                    <td><span style="color: ${badgeColor}; font-weight: 600;">${m.status || 'Unknown'}</span></td>
+                    <td style="color: ${balance > 0 ? 'var(--accent-red)' : 'var(--text-secondary)'}; font-weight: 600;">Rs. ${balance}</td>
+                    <td>
+                        <div style="display: flex; gap: 0.5rem;">
+                            <button class="btn btn-online" style="width:auto; padding:0.25rem 0.5rem; font-size: 0.8rem;" onclick="viewDigitalID('${m.member_id}', 'Tournament')" title="View Card">🪪</button>
+                            <button class="btn btn-online" style="width:auto; padding:0.25rem 0.5rem; font-size: 0.8rem; background: var(--accent-blue);" onclick="openEditMemberModal('${m.member_id}', 'Tournament')" title="Edit Member">✏️</button>
+                            <button class="btn btn-end" style="width:auto; padding:0.25rem 0.5rem; font-size: 0.8rem;" onclick="deleteMember('${m.member_id}', 'Tournament')" title="Delete Member">🗑️</button>
+                        </div>
                     </td>
                 `;
                 tourTbody.appendChild(tr);
@@ -897,6 +944,112 @@ const printIDCard = () => {
     window.print();
 };
 
+// ==========================================
+// Member Directory CRUD Logic
+// ==========================================
+
+const deleteMember = (memberId, type) => {
+    if (!confirm(`Are you sure you want to PERMANENTLY delete member ${memberId}? This action cannot be undone.`)) return;
+
+    if (type === 'Annual') {
+        let members = getAnnualMembers();
+        members = members.filter(m => m.member_id !== memberId);
+        saveAnnualMembers(members);
+    } else {
+        let members = getTournamentMembers();
+        members = members.filter(m => m.member_id !== memberId);
+        saveTournamentMembers(members);
+    }
+
+    renderMemberDirectory();
+    renderLibraryLogs();
+    showToast(`Member ${memberId} deleted successfully.`, "error");
+};
+
+const openEditMemberModal = (memberId, type) => {
+    const titleEl = document.getElementById('edit-member-title');
+    const modal = document.getElementById('edit-member-modal');
+    const annualFields = document.getElementById('annual-edit-fields');
+    const tourFields = document.getElementById('tour-edit-fields');
+
+    document.getElementById('edit-member-id').value = memberId;
+    document.getElementById('edit-member-type').value = type;
+
+    if (type === 'Annual') {
+        const members = getAnnualMembers();
+        const member = members.find(m => m.member_id === memberId);
+        if (!member) return;
+
+        titleEl.textContent = "Edit Annual Member";
+        document.getElementById('edit-member-name').value = member.name;
+        document.getElementById('edit-member-phone').value = member.phone || '';
+        if (member.start_date) {
+            const d = new Date(member.start_date);
+            document.getElementById('edit-member-start').value = d.toISOString().split('T')[0];
+        }
+
+        annualFields.style.display = 'block';
+        tourFields.style.display = 'none';
+    } else {
+        const members = getTournamentMembers();
+        const member = members.find(m => m.member_id === memberId);
+        if (!member) return;
+
+        titleEl.textContent = "Edit Tournament Participant";
+        document.getElementById('edit-member-name').value = member.name;
+        document.getElementById('edit-member-tour-id').value = member.tournament_id || '';
+        document.getElementById('edit-member-status').value = member.status || 'Paid';
+
+        annualFields.style.display = 'none';
+        tourFields.style.display = 'block';
+    }
+
+    modal.style.display = 'block';
+};
+
+const closeEditMemberModal = () => {
+    document.getElementById('edit-member-modal').style.display = 'none';
+};
+
+// Handle Form Submission
+document.getElementById('edit-member-form').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const memberId = document.getElementById('edit-member-id').value;
+    const type = document.getElementById('edit-member-type').value;
+
+    if (type === 'Annual') {
+        let members = getAnnualMembers();
+        const index = members.findIndex(m => m.member_id === memberId);
+        if (index !== -1) {
+            members[index].name = document.getElementById('edit-member-name').value;
+            members[index].phone = document.getElementById('edit-member-phone').value;
+            const startDate = document.getElementById('edit-member-start').value;
+            if (startDate) {
+                const start = new Date(startDate);
+                members[index].start_date = start.getTime();
+                const expiry = new Date(start);
+                expiry.setFullYear(start.getFullYear() + 1);
+                members[index].expiry_date = expiry.getTime();
+            }
+            saveAnnualMembers(members);
+        }
+    } else {
+        let members = getTournamentMembers();
+        const index = members.findIndex(m => m.member_id === memberId);
+        if (index !== -1) {
+            members[index].name = document.getElementById('edit-member-name').value;
+            members[index].tournament_id = document.getElementById('edit-member-tour-id').value;
+            members[index].status = document.getElementById('edit-member-status').value;
+            saveTournamentMembers(members);
+        }
+    }
+
+    closeEditMemberModal();
+    renderMemberDirectory();
+    renderLibraryLogs();
+    showToast("Member details updated successfully.");
+});
+
 window.calculateAnnualExpiry = calculateAnnualExpiry;
 window.processImage = processImage;
 window.addAnnualMember = addAnnualMember;
@@ -904,3 +1057,10 @@ window.addTournamentMember = addTournamentMember;
 window.viewDigitalID = viewDigitalID;
 window.closeIDCardModal = closeIDCardModal;
 window.printIDCard = printIDCard;
+window.deleteMember = deleteMember;
+window.openEditMemberModal = openEditMemberModal;
+window.closeEditMemberModal = closeEditMemberModal;
+window.logout = logout;
+window.showCCTVModal = showCCTVModal;
+window.closeCCTVModal = closeCCTVModal;
+window.setupTheme = setupTheme;
