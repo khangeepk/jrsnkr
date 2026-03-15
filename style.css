@@ -12,6 +12,19 @@
     --border-radius: 12px;
     --glass-bg: rgba(32, 36, 48, 0.6);
     --glass-border: rgba(255, 255, 255, 0.08);
+    --bg-hover: rgba(255, 255, 255, 0.05);
+    --bg-hover-strong: rgba(255, 255, 255, 0.1);
+    --bg-active: rgba(0, 229, 255, 0.15);
+    --border-active: rgba(0, 229, 255, 0.3);
+    --bg-input: rgba(0, 0, 0, 0.2);
+    --bg-overlay: rgba(0, 0, 0, 0.4);
+    --bg-modal: rgba(0, 0, 0, 0.5);
+    --shadow-main: rgba(0, 0, 0, 0.5);
+    --shadow-light: rgba(0, 0, 0, 0.2);
+    --shadow-glow: rgba(0, 229, 255, 0.1);
+    --card-hover-bg: #21242d;
+    --border-hover: rgba(255, 255, 255, 0.3);
+    --border-subtle: rgba(255, 255, 255, 0.05);
 }
 
 [data-theme="light"] {
@@ -23,8 +36,21 @@
     --accent-green: #059669;
     --accent-blue: #2563eb;
     --border-color: #e5e5e5;
-    --glass-bg: rgba(0, 0, 0, 0.03);
+    --glass-bg: rgba(255, 255, 255, 0.8);
     --glass-border: rgba(0, 0, 0, 0.08);
+    --bg-hover: rgba(0, 0, 0, 0.05);
+    --bg-hover-strong: rgba(0, 0, 0, 0.1);
+    --bg-active: rgba(37, 99, 235, 0.1);
+    --border-active: rgba(37, 99, 235, 0.3);
+    --bg-input: #ffffff;
+    --bg-overlay: rgba(0, 0, 0, 0.05);
+    --bg-modal: rgba(0, 0, 0, 0.5);
+    --shadow-main: rgba(0, 0, 0, 0.15);
+    --shadow-light: rgba(0, 0, 0, 0.05);
+    --shadow-glow: rgba(37, 99, 235, 0.15);
+    --card-hover-bg: #f9fafb;
+    --border-hover: rgba(0, 0, 0, 0.2);
+    --border-subtle: rgba(0, 0, 0, 0.05);
 }
 
 * {
@@ -103,7 +129,7 @@ body::before {
 
 .nav-link:hover {
     color: var(--text-primary);
-    background: rgba(255, 255, 255, 0.05);
+    background: var(--bg-hover);
 }
 
 .nav-link.active {
@@ -144,7 +170,7 @@ h1 {
 
 .stat-widget:hover {
     transform: translateY(-2px);
-    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+    box-shadow: 0 8px 16px var(--bg-input);
     border-color: var(--accent-blue);
 }
 
@@ -235,14 +261,14 @@ h1 {
 }
 
 .sidebar-icon:hover {
-    background: rgba(255, 255, 255, 0.1);
+    background: var(--bg-hover-strong);
     color: var(--text-primary);
 }
 
 .sidebar-icon.active {
-    background: rgba(0, 229, 255, 0.15);
+    background: var(--bg-active);
     color: var(--accent-blue);
-    border: 1px solid rgba(0, 229, 255, 0.3);
+    border: 1px solid var(--border-active);
 }
 
 /* Main Dashboard Grid */
@@ -305,16 +331,16 @@ h1 {
 .table-card:hover {
     transform: translateY(-5px) scale(1.02);
     border-color: rgba(0, 229, 255, 0.4);
-    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.5), 0 0 20px rgba(0, 229, 255, 0.1);
-    background-color: #21242d;
+    box-shadow: 0 15px 35px var(--bg-modal), 0 0 20px var(--bg-active);
+    background-color: var(--card-hover-bg);
     z-index: 10;
 }
 
 /* Make inputs inside hovered cards pop more */
 .table-card:hover input,
 .table-card:hover select {
-    border-color: rgba(255, 255, 255, 0.3);
-    background-color: rgba(255, 255, 255, 0.05);
+    border-color: var(--border-hover);
+    background-color: var(--bg-hover);
 }
 
 /* Remove old top-bar indicator */
@@ -430,7 +456,7 @@ h1 {
 /* Segmented Control Tabs (Game Mode) */
 .segmented-control {
     display: flex;
-    background: rgba(0, 0, 0, 0.4);
+    background: var(--bg-overlay);
     border-radius: 8px;
     padding: 4px;
     gap: 4px;
@@ -450,14 +476,14 @@ h1 {
 }
 
 .segment-tab:hover {
-    background: rgba(255, 255, 255, 0.05);
+    background: var(--bg-hover);
 }
 
 .segment-tab.active {
-    background: rgba(0, 229, 255, 0.1);
+    background: var(--bg-active);
     color: var(--accent-blue);
     position: relative;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    box-shadow: 0 2px 8px var(--bg-input);
 }
 
 .segment-tab.active::after {
@@ -489,7 +515,7 @@ input,
 select {
     width: 100%;
     padding: 0.75rem 1rem;
-    background-color: rgba(0, 0, 0, 0.2);
+    background-color: var(--bg-input);
     border: 1px solid var(--border-color);
     border-radius: 8px;
     color: var(--text-primary);
@@ -525,7 +551,7 @@ select {
     right: 0;
     background-color: var(--bg-card);
     border-radius: 0 0 6px 6px;
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+    box-shadow: 0 4px 6px -1px var(--shadow-main);
     overflow: hidden;
     display: none;
 }
@@ -539,14 +565,14 @@ select {
 }
 
 .autocomplete-items div:hover {
-    background-color: rgba(255, 255, 255, 0.05);
+    background-color: var(--bg-hover);
 }
 
 /* Time Display */
 .time-display {
     display: flex;
     justify-content: space-between;
-    background-color: rgba(0, 0, 0, 0.2);
+    background-color: var(--bg-input);
     border-radius: 8px;
     padding: 0.75rem 1rem;
     font-size: 0.9rem;
@@ -587,7 +613,7 @@ select {
 
 .btn:hover:not(:disabled) {
     transform: translateY(-2px);
-    box-shadow: 0 4px 12px -2px rgba(0, 0, 0, 0.2);
+    box-shadow: 0 4px 12px -2px var(--bg-input);
 }
 
 .btn:disabled {
@@ -601,7 +627,7 @@ select {
     background: linear-gradient(135deg, #06b6d4, #3b82f6);
     color: white;
     box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4);
-    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+    text-shadow: 0 1px 2px var(--shadow-main);
     border: none;
 }
 
@@ -615,7 +641,7 @@ select {
     color: white;
     box-shadow: 0 4px 15px rgba(225, 29, 72, 0.4);
     border: none;
-    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+    text-shadow: 0 1px 2px var(--shadow-main);
 }
 
 .btn-end:hover:not(:disabled) {
@@ -669,7 +695,7 @@ select {
 
 .quick-action-btn {
     flex: 1;
-    background: rgba(0, 0, 0, 0.3);
+    background: var(--shadow-main);
     border: 1px solid var(--border-color);
     border-radius: 8px;
     padding: 0.5rem 0;
@@ -685,9 +711,9 @@ select {
 }
 
 .quick-action-btn:hover {
-    background: rgba(255, 255, 255, 0.05);
+    background: var(--bg-hover);
     color: var(--text-primary);
-    border-color: rgba(255, 255, 255, 0.2);
+    border-color: var(--border-hover);
 }
 
 .quick-action-btn.red:hover {
@@ -711,7 +737,7 @@ select {
     position: relative;
     border: 1px solid var(--border-color);
     overflow: hidden;
-    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+    box-shadow: 0 10px 40px var(--bg-modal);
     min-height: 400px;
 }
 
@@ -721,7 +747,7 @@ select {
     left: 0;
     right: 0;
     bottom: 0;
-    background: linear-gradient(to top, rgba(0, 0, 0, 0.9), rgba(0, 0, 0, 0.4));
+    background: linear-gradient(to top, var(--bg-main), var(--bg-overlay));
     display: flex;
     flex-direction: column;
     justify-content: flex-end;
@@ -732,12 +758,12 @@ select {
     background: rgba(10, 15, 24, 0.7);
     backdrop-filter: blur(8px);
     -webkit-backdrop-filter: blur(8px);
-    border: 1px solid rgba(0, 229, 255, 0.3);
+    border: 1px solid var(--border-active);
     border-radius: 12px;
     padding: 1.5rem;
     height: 200px;
     position: relative;
-    box-shadow: inset 0 0 20px rgba(0, 229, 255, 0.1);
+    box-shadow: inset 0 0 20px var(--bg-active);
 }
 
 .feed-title {
@@ -807,7 +833,7 @@ select {
     color: var(--text-primary);
     padding: 1rem 1.5rem;
     border-radius: 8px;
-    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
+    box-shadow: 0 10px 15px -3px var(--shadow-main);
     font-size: 0.9rem;
     animation: slideIn 0.3s ease-out forwards;
     display: flex;
@@ -849,7 +875,7 @@ select {
     left: 0;
     width: 100%;
     height: 100%;
-    background: rgba(0, 0, 0, 0.5);
+    background: var(--bg-modal);
     backdrop-filter: blur(4px);
     z-index: 100;
     align-items: center;
@@ -867,7 +893,7 @@ select {
     padding: 2rem;
     width: 90%;
     max-width: 400px;
-    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.3);
+    box-shadow: 0 20px 25px -5px var(--shadow-main);
     animation: modalScale 0.2s ease-out forwards;
 }
 
@@ -948,7 +974,7 @@ select {
 }
 
 .data-table tr:hover td {
-    background: rgba(255, 255, 255, 0.02);
+    background: var(--bg-hover);
 }
 
 /* Digital ID Card Styling */
@@ -960,7 +986,7 @@ select {
     position: relative;
     overflow: hidden;
     color: white;
-    box-shadow: 0 30px 60px rgba(0, 0, 0, 0.5);
+    box-shadow: 0 30px 60px var(--bg-modal);
 }
 
 .id-card-inner {
@@ -1005,7 +1031,7 @@ select {
     border: 3px solid var(--accent-blue);
     overflow: hidden;
     margin-bottom: 1.5rem;
-    background: rgba(255, 255, 255, 0.05);
+    background: var(--bg-hover);
 }
 
 .id-card-photo-box img {
@@ -1023,7 +1049,7 @@ select {
     justify-content: space-between;
     margin-bottom: 0.5rem;
     font-size: 0.8rem;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    border-bottom: 1px solid var(--bg-hover);
     padding-bottom: 0.25rem;
 }
 

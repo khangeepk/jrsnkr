@@ -228,6 +228,98 @@ const deleteUser = (index) => {
 
 
 // ==========================================
+// 1.8 PAYMENT SETTINGS MANAGEMENT
+// ==========================================
+
+const handlePaymentSettingsSave = async (e) => {
+    e.preventDefault();
+    const bankName = document.getElementById('pay-bank-name').value.trim();
+    const accountTitle = document.getElementById('pay-account-title').value.trim();
+    const accountNumber = document.getElementById('pay-account-number').value.trim();
+    const easypaisa = document.getElementById('pay-easypaisa').value.trim();
+    const qrUploadInput = document.getElementById('pay-qr-upload');
+
+    let settings = JSON.parse(localStorage.getItem('paymentSettings') || '{}');
+    settings.bankName = bankName;
+    settings.accountTitle = accountTitle;
+    settings.accountNumber = accountNumber;
+    settings.easypaisa = easypaisa;
+
+    if (qrUploadInput && qrUploadInput.files.length > 0) {
+        try {
+            const base64 = await processAdminImage(qrUploadInput.files[0]);
+            settings.qrCodeBase64 = base64;
+            
+            // Update preview instantly
+            const previewDiv = document.getElementById('pay-qr-preview');
+            if(previewDiv) {
+                previewDiv.innerHTML = `<img src="${base64}" style="max-height: 100px; border-radius: 8px; border: 1px solid var(--border-color);">`;
+            }
+        } catch (err) {
+            console.error(err);
+            showToast("Failed to process QR code image.", "error");
+            return;
+        }
+    }
+
+    localStorage.setItem('paymentSettings', JSON.stringify(settings));
+    showToast("Global Payment Settings Saved!", "success");
+};
+
+const processAdminImage = (file) => {
+    return new Promise((resolve, reject) => {
+        if (!file) { resolve(null); return; }
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = (event) => {
+            const img = new Image();
+            img.src = event.target.result;
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                const MAX_WIDTH = 500;
+                const MAX_HEIGHT = 500;
+                let width = img.width;
+                let height = img.height;
+                if (width > height) {
+                    if (width > MAX_WIDTH) { height *= MAX_WIDTH / width; width = MAX_WIDTH; }
+                } else {
+                    if (height > MAX_HEIGHT) { width *= MAX_HEIGHT / height; height = MAX_HEIGHT; }
+                }
+                canvas.width = width;
+                canvas.height = height;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, width, height);
+                resolve(canvas.toDataURL('image/jpeg', 0.8));
+            };
+            img.onerror = reject;
+        };
+        reader.onerror = reject;
+    });
+};
+
+const loadPaymentSettings = () => {
+    const settings = JSON.parse(localStorage.getItem('paymentSettings') || '{}');
+    const bankNameInput = document.getElementById('pay-bank-name');
+    if (bankNameInput) bankNameInput.value = settings.bankName || '';
+    
+    const accTitleInput = document.getElementById('pay-account-title');
+    if (accTitleInput) accTitleInput.value = settings.accountTitle || '';
+    
+    const accNumberInput = document.getElementById('pay-account-number');
+    if (accNumberInput) accNumberInput.value = settings.accountNumber || '';
+    
+    const epInput = document.getElementById('pay-easypaisa');
+    if (epInput) epInput.value = settings.easypaisa || '';
+    
+    const qrPreview = document.getElementById('pay-qr-preview');
+    if (settings.qrCodeBase64 && qrPreview) {
+        qrPreview.innerHTML = `<img src="${settings.qrCodeBase64}" style="max-height: 100px; border-radius: 8px; border: 1px solid var(--border-color);">`;
+    }
+};
+
+window.handlePaymentSettingsSave = handlePaymentSettingsSave;
+
+// ==========================================
 // 2. DATA OVERRIDE: DAILY INCOME
 // ==========================================
 
@@ -252,11 +344,19 @@ const renderIncomeOverride = () => {
             ? `<button class="btn btn-end" style="padding: 0.2rem 0.6rem; font-size: 0.8rem;" data-id="${entry.id}">Delete</button>`
             : `<button class="btn btn-end" style="padding: 0.2rem 0.6rem; font-size: 0.8rem; opacity: 0.5; cursor: not-allowed;" disabled>No Delete</button>`;
 
+        let proofBtnHtml = '';
+        if (entry.mode === 'Online' && entry.proof_image) {
+            proofBtnHtml = `<br><button class="btn btn-online" style="margin-top: 0.3rem; padding: 0.2rem 0.4rem; font-size: 0.75rem;" onclick="showProofModal('${entry.id}')">View Proof</button>`;
+        }
+
         tr.innerHTML = `
             <td>${d.toLocaleDateString()} <span style="color: var(--text-secondary); font-size: 0.8rem;">${d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span></td>
             <td><strong>${entry.playerName || 'Table Session'}</strong></td>
             <td style="color: var(--accent-green); font-weight: bold;">Rs. ${entry.amount}</td>
-            <td><span class="status-badge" style="background: transparent; border: 1px solid var(--border-color);">${entry.mode}</span></td>
+            <td>
+                <span class="status-badge" style="background: transparent; border: 1px solid var(--border-color);">${entry.mode}</span>
+                ${proofBtnHtml}
+            </td>
             <td>
                 <div style="display: flex; gap: 0.5rem; justify-content: flex-end;">
                     ${editBtn}
@@ -516,8 +616,27 @@ document.addEventListener('DOMContentLoaded', () => {
     renderIncomeOverride();
     renderExpenseOverride();
     renderPlayerLedger();
+    loadPaymentSettings();
 });
 
+const showProofModal = (transactionId) => {
+    const income = JSON.parse(localStorage.getItem('dailyIncome') || '[]');
+    const entry = income.find(x => x.id == transactionId);
+    if (entry && entry.proof_image) {
+        document.getElementById('proof-modal-img').src = entry.proof_image;
+        document.getElementById('proof-modal').style.display = 'block';
+    } else {
+        showToast("Proof image not found or corrupted.", "error");
+    }
+};
+
+const closeProofModal = () => {
+    document.getElementById('proof-modal').style.display = 'none';
+    document.getElementById('proof-modal-img').src = '';
+};
+
+window.showProofModal = showProofModal;
+window.closeProofModal = closeProofModal;
 window.showCCTVModal = showCCTVModal;
 window.closeCCTVModal = closeCCTVModal;
 window.logout = logout;

@@ -119,6 +119,44 @@
                     </div>
                 </div>
 
+                <!-- Global Payment Settings -->
+                <div class="report-panel" style="border: 2px solid #8b5cf6; margin-top: 2rem;">
+                    <h2 style="color: #8b5cf6; display: flex; justify-content: space-between;">
+                        <span>Global Payment Settings (Online Checkout)</span>
+                    </h2>
+                    <p style="color: var(--text-secondary); margin-bottom: 1.5rem; font-size: 0.9rem;">
+                        Configure the receiving bank and mobile wallet details. These will be shown to customers when selecting the "Online" payment mode during checkout.
+                    </p>
+                    <form id="payment-settings-form" onsubmit="handlePaymentSettingsSave(event)">
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+                            <div class="form-group">
+                                <label>Bank Name</label>
+                                <input type="text" id="pay-bank-name" placeholder="e.g. Meezan Bank, HBL">
+                            </div>
+                            <div class="form-group">
+                                <label>Account Title</label>
+                                <input type="text" id="pay-account-title" placeholder="e.g. JR Snooker Lounge">
+                            </div>
+                            <div class="form-group">
+                                <label>Account Number / IBAN</label>
+                                <input type="text" id="pay-account-number" placeholder="e.g. PK00MEZN0001...">
+                            </div>
+                            <div class="form-group">
+                                <label>Easypaisa / JazzCash / SadaPay</label>
+                                <input type="text" id="pay-easypaisa" placeholder="e.g. 0300-1234567">
+                            </div>
+                        </div>
+                        <div class="form-group" style="margin-bottom: 1.5rem;">
+                            <label>QR Code Image (Optional)</label>
+                            <input type="file" id="pay-qr-upload" accept="image/*" style="background: var(--bg-input);">
+                            <div id="pay-qr-preview" style="margin-top: 0.5rem;"></div>
+                        </div>
+                        <button type="submit" class="btn btn-transfer" style="width: 100%; max-width: 300px;">
+                            Save Payment Details
+                        </button>
+                    </form>
+                </div>
+
                 <!-- Live Feed & Announcement Control -->
                 <div class="report-panel" style="border: 2px solid var(--accent-green); margin-top: 2rem;">
                     <h2 style="color: var(--accent-green); display: flex; justify-content: space-between;">
@@ -133,7 +171,7 @@
                             <label>Broadcast Message(s)</label>
                             <textarea id="live-feed-text" rows="4"
                                 placeholder="Enter club news, tournament updates, or current matches here..."
-                                style="width: 100%; padding: 1rem; background: rgba(0,0,0,0.2); border: 1px solid var(--border-color); color: var(--text-primary); border-radius: 8px; font-family: inherit; resize: vertical;"></textarea>
+                                style="width: 100%; padding: 1rem; background: var(--bg-input); border: 1px solid var(--border-color); color: var(--text-primary); border-radius: 8px; font-family: inherit; resize: vertical;"></textarea>
                         </div>
                         <button type="submit" class="btn btn-start" style="width: 100%; max-width: 300px;">
                             Broadcast to Dashboard
@@ -259,7 +297,7 @@
                 <div style="font-size: 3rem; margin-bottom: 1rem;">🔒</div>
                 <h3 style="color: var(--accent-red); margin-bottom: 1rem;">Access Restricted</h3>
                 <p style="color: var(--text-secondary); margin-bottom: 1.5rem;">The digital live feed for CCTV is currently restricted to On-Site Admin access only.</p>
-                <div style="background: rgba(0,0,0,0.2); padding: 1rem; border-radius: 8px; border: 1px solid var(--border-color); text-align: left; font-size: 0.9rem;">
+                <div style="background: var(--bg-input); padding: 1rem; border-radius: 8px; border: 1px solid var(--border-color); text-align: left; font-size: 0.9rem;">
                     <p><strong>System Status:</strong> <span style="color: var(--accent-green);">ONLINE</span></p>
                     <p><strong>Active Cameras:</strong> 16 / 16</p>
                     <p><strong>Recording:</strong> Active (H.265)</p>
@@ -281,6 +319,20 @@
             <div style="display: flex; gap: 1rem; margin-top: 2rem;">
                 <button class="btn btn-end" onclick="closeEditModal()" style="flex: 1;">Cancel</button>
                 <button class="btn btn-online" id="confirm-edit-btn" style="flex: 1;">Save Changes</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Online Payment Proof Modal -->
+    <div id="proof-modal" class="modal">
+        <div class="modal-content" style="max-width: 500px; text-align: center;">
+            <div class="modal-header">
+                <h2>🧾 Payment Proof</h2>
+                <button class="close-btn" onclick="closeProofModal()">&times;</button>
+            </div>
+            <div class="modal-body" style="padding: 1rem;">
+                <img id="proof-modal-img" src="" style="width: 100%; border-radius: 8px; border: 2px solid var(--border-color); object-fit: contain; max-height: 70vh;">
+                <button class="btn btn-end" style="margin-top: 1rem; width: 100%;" onclick="closeProofModal()">Close</button>
             </div>
         </div>
     </div>

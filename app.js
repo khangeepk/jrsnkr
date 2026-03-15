@@ -711,7 +711,7 @@ const startSession = (tableId) => {
         }
 
         modalList.innerHTML += `
-            <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem; padding-bottom: 0.5rem; border-bottom: 1px solid rgba(255,255,255,0.05);">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem; padding-bottom: 0.5rem; border-bottom: 1px solid var(--bg-hover);">
                 <div>
                     <span style="color: var(--text-secondary); font-size: 0.8rem; margin-right: 0.5rem;">${index === 0 ? 'P1' : 'P' + (index + 1)}:</span>
                     <strong>${profile.name}</strong> ${badgeHtml}
@@ -1042,7 +1042,7 @@ const recalculateBill = (tableId) => {
 
         <div style="display: flex; gap: 0.5rem; margin-top: 1rem; flex-wrap: wrap;">
             <button class="btn btn-cash" style="flex: 1; min-width: 30%;" onclick="finalizeSession(${tableId}, 'Cash')">Cash</button>
-            <button class="btn btn-online" style="flex: 1; min-width: 30%;" onclick="finalizeSession(${tableId}, 'Online')">Online</button>
+            <button class="btn btn-online" style="flex: 1; min-width: 30%;" onclick="showOnlineCheckout(${tableId})">Online</button>
             <button class="btn btn-credit" style="flex: 1; min-width: 30%;" onclick="finalizeSession(${tableId}, 'Credit')">Credit</button>
             <button class="btn btn-transfer" style="flex: 1 1 100%;" onclick="showTransferModal(${tableId}, '${sessionData.playerName.replace(/'/g, "\\'")}', ${totalBill})">Transfer to Opponent</button>
         </div>
@@ -1050,11 +1050,86 @@ const recalculateBill = (tableId) => {
 `;
 };
 
-const finalizeSession = (tableId, mode) => {
+const showOnlineCheckout = (tableId) => {
+    const settings = JSON.parse(localStorage.getItem('paymentSettings') || '{}');
+    const summaryDiv = document.getElementById(`checkout-summary-${tableId}`);
+    if (!summaryDiv) return;
+
+    let html = `
+        <div style="background: var(--bg-card); padding: 1.5rem; border-radius: 8px; border: 1px solid var(--accent-blue); margin-top: 1rem;">
+            <h3 style="color: var(--accent-blue); margin-bottom: 1rem; text-align: center;">Online Payment Details</h3>
+            <div style="display: flex; flex-direction: column; gap: 0.5rem; font-size: 0.9rem; margin-bottom: 1.5rem;">
+                ${settings.bankName ? `<div><strong>Bank:</strong> ${settings.bankName}</div>` : ''}
+                ${settings.accountTitle ? `<div><strong>Title:</strong> ${settings.accountTitle}</div>` : ''}
+                ${settings.accountNumber ? `<div><strong>Account/IBAN:</strong> <span style="font-family: monospace; color: var(--accent-green); font-size: 1rem;">${settings.accountNumber}</span></div>` : ''}
+                ${settings.easypaisa ? `<div><strong>Easypaisa/JazzCash:</strong> <span style="font-family: monospace; color: var(--accent-green); font-size: 1rem;">${settings.easypaisa}</span></div>` : ''}
+            </div>
+            ${settings.qrCodeBase64 ? `<div style="text-align: center; margin-bottom: 1.5rem;"><img src="${settings.qrCodeBase64}" style="max-width: 200px; border-radius: 8px; border: 2px solid var(--border-color);"></div>` : ''}
+            
+            <div class="form-group" style="margin-bottom: 1.5rem;">
+                <label style="color: var(--accent-red); font-weight: bold;">Upload Payment Proof (Required)</label>
+                <input type="file" id="online-proof-${tableId}" accept="image/*" style="background: var(--bg-input);">
+            </div>
+
+            <div style="display: flex; gap: 0.5rem;">
+                <button class="btn btn-end" style="flex: 1;" onclick="recalculateBill(${tableId})">Back</button>
+                <button class="btn btn-online" style="flex: 2; background: var(--accent-green); color: white;" onclick="processOnlinePayment(${tableId})">Verify & Confirm</button>
+            </div>
+        </div>
+    `;
+    
+    summaryDiv.innerHTML = html;
+};
+
+const processOnlinePayment = async (tableId) => {
+    const fileInput = document.getElementById(`online-proof-${tableId}`);
+    if (!fileInput || fileInput.files.length === 0) {
+        showToast("Payment Proof screenshot is required for Online payments.", "error");
+        return;
+    }
+
+    try {
+        const proofString = await new Promise((resolve, reject) => {
+            const file = fileInput.files[0];
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+            reader.onload = (e) => {
+                const img = new Image();
+                img.src = e.target.result;
+                img.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    const MAX_WIDTH = 600;
+                    const MAX_HEIGHT = 800;
+                    let width = img.width;
+                    let height = img.height;
+                    if (width > height) {
+                        if (width > MAX_WIDTH) { height *= MAX_WIDTH / width; width = MAX_WIDTH; }
+                    } else {
+                        if (height > MAX_HEIGHT) { width *= MAX_HEIGHT / height; height = MAX_HEIGHT; }
+                    }
+                    canvas.width = width;
+                    canvas.height = height;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, width, height);
+                    resolve(canvas.toDataURL('image/jpeg', 0.6));
+                };
+                img.onerror = reject;
+            };
+            reader.onerror = reject;
+        });
+        
+        finalizeSession(tableId, 'Online', proofString);
+    } catch (err) {
+        console.error("Proof Processing Error:", err);
+        showToast("Failed to process payment proof image.", "error");
+    }
+};
+
+const finalizeSession = (tableId, mode, proofString = null) => {
     const sessionData = window[`session_${tableId}`];
 
     // Process Payment Ledger logic
-    confirmPayment(tableId, sessionData.playerName, sessionData.totalBill, mode);
+    confirmPayment(tableId, sessionData.playerName, sessionData.totalBill, mode, proofString);
 
     // Background Server Log
     logSessionToLedger(sessionData);
@@ -1076,7 +1151,7 @@ const finalizeSession = (tableId, mode) => {
     delete window[`session_${tableId}`];
 };
 
-const confirmPayment = (tableId, playerName, amount, mode) => {
+const confirmPayment = (tableId, playerName, amount, mode, proofString = null) => {
     // Phase 3 & Part 2 Cumulative Ledger / Debt Tracking
     const profile = getUnifiedPlayerProfile(playerName);
 
@@ -1145,7 +1220,8 @@ const confirmPayment = (tableId, playerName, amount, mode) => {
             playerName: mappedPlayerName,
             amount: totalWithBalance,
             mode: mode,
-            is_pending: false
+            is_pending: false,
+            proof_image: proofString
         });
         
         showToast(`Payment of Rs.${totalWithBalance} received via ${mode}. Debt cleared.`);

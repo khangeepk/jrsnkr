@@ -119,15 +119,21 @@ const renderIncomePortal = () => {
         const duesText = isPending ? `Rs. ${item.amount}` : '-';
         const receivedText = isPending ? '-' : `Rs. ${item.amount}`;
 
+        let proofBtnHtml = '';
+        if (item.mode === 'Online' && item.proof_image) {
+            proofBtnHtml = `<br><button class="btn btn-online" style="margin-top: 0.3rem; padding: 0.2rem 0.4rem; font-size: 0.75rem; width: 100%; text-align: center;" onclick="showProofModal('${item.id}')">View Proof</button>`;
+        }
+
         tr.innerHTML = `
             <td>${timeStr}</td>
             <td><strong>${item.playerName}</strong></td>
             <td style="color: ${isPending ? 'var(--text-secondary)' : 'var(--accent-green)'}; font-weight: 500;">${receivedText}</td>
             <td style="color: var(--accent-red); font-weight: 600;">${duesText}</td>
             <td>
-                <span style="font-size: 0.8rem; padding: 0.2rem 0.5rem; background: rgba(0,0,0,0.2); border-radius: 4px; border: 1px solid var(--border-color);">
+                <span style="font-size: 0.8rem; padding: 0.2rem 0.5rem; background: var(--bg-input); border-radius: 4px; border: 1px solid var(--border-color);">
                     ${item.mode}
                 </span>
+                ${proofBtnHtml}
             </td>
             <td>${deleteBtnHtml}</td>
         `;
@@ -143,6 +149,22 @@ const renderIncomePortal = () => {
     // Fallback for old UI components
     const oldIncomeEl = document.getElementById('total-income');
     if (oldIncomeEl) oldIncomeEl.innerText = `Total: Rs. ${totalReceived + totalPending}`;
+};
+
+window.showProofModal = (transactionId) => {
+    const income = getDailyIncome();
+    const entry = income.find(x => x.id == transactionId);
+    if (entry && entry.proof_image) {
+        document.getElementById('proof-modal-img').src = entry.proof_image;
+        document.getElementById('proof-modal').style.display = 'block';
+    } else {
+        showToast("Proof image not found or corrupted.", "error");
+    }
+};
+
+window.closeProofModal = () => {
+    document.getElementById('proof-modal').style.display = 'none';
+    document.getElementById('proof-modal-img').src = '';
 };
 
 window.deleteIncomeEntry = (index) => {
@@ -170,7 +192,7 @@ const renderExpenses = () => {
         div.style.display = 'flex';
         div.style.justifyContent = 'space-between';
         div.style.padding = '0.75rem';
-        div.style.background = 'rgba(0,0,0,0.2)';
+        div.style.background = 'var(--bg-input)';
         div.style.borderRadius = '8px';
         div.style.border = '1px solid var(--border-color)';
 

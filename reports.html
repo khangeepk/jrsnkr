@@ -20,7 +20,7 @@
                 </div>
             </div>
             <div class="stats">
-                <div class="stat-widget" style="border-color: rgba(0, 229, 255, 0.3);">
+                <div class="stat-widget" style="border-color: var(--border-active);">
                     <span class="stat-title" style="color: var(--accent-blue);">Net Profit</span>
                     <span class="stat-value up" id="net-profit-badge" style="color: var(--accent-blue);">Rs. 0</span>
                 </div>
@@ -346,7 +346,7 @@
                 <div style="font-size: 3rem; margin-bottom: 1rem;">🔒</div>
                 <h3 style="color: var(--accent-red); margin-bottom: 1rem;">Access Restricted</h3>
                 <p style="color: var(--text-secondary); margin-bottom: 1.5rem;">The digital live feed for CCTV is currently restricted to On-Site Admin access only.</p>
-                <div style="background: rgba(0,0,0,0.2); padding: 1rem; border-radius: 8px; border: 1px solid var(--border-color); text-align: left; font-size: 0.9rem;">
+                <div style="background: var(--bg-input); padding: 1rem; border-radius: 8px; border: 1px solid var(--border-color); text-align: left; font-size: 0.9rem;">
                     <p><strong>System Status:</strong> <span style="color: var(--accent-green);">ONLINE</span></p>
                     <p><strong>Active Cameras:</strong> 16 / 16</p>
                     <p><strong>Recording:</strong> Active (H.265)</p>
@@ -421,6 +421,20 @@
                         <button type="button" class="btn btn-end" onclick="closeEditMemberModal()" style="flex: 1;">Cancel</button>
                     </div>
                 </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Online Payment Proof Modal -->
+    <div id="proof-modal" class="modal">
+        <div class="modal-content" style="max-width: 500px; text-align: center;">
+            <div class="modal-header">
+                <h2>🧾 Payment Proof</h2>
+                <button class="close-btn" onclick="closeProofModal()">&times;</button>
+            </div>
+            <div class="modal-body" style="padding: 1rem;">
+                <img id="proof-modal-img" src="" style="width: 100%; border-radius: 8px; border: 2px solid var(--border-color); object-fit: contain; max-height: 70vh;">
+                <button class="btn btn-end" style="margin-top: 1rem; width: 100%;" onclick="closeProofModal()">Close</button>
             </div>
         </div>
     </div>
