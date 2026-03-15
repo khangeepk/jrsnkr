@@ -18,25 +18,23 @@ const hasPerm = (action) => {
 const setupTheme = () => {
     const savedTheme = localStorage.getItem('theme') || 'dark';
     if (savedTheme === 'light') {
-        document.documentElement.setAttribute('data-theme', 'light');
+        document.body.classList.add('light-mode');
     }
-
     const toggleBtn = document.getElementById('theme-toggle');
     if (toggleBtn) {
         toggleBtn.textContent = savedTheme === 'light' ? '🌙' : '☀️';
-        toggleBtn.addEventListener('click', () => {
-            const current = document.documentElement.getAttribute('data-theme');
-            const newTheme = current === 'light' ? 'dark' : 'light';
-
-            if (newTheme === 'light') {
-                document.documentElement.setAttribute('data-theme', 'light');
-            } else {
-                document.documentElement.removeAttribute('data-theme');
-            }
-            localStorage.setItem('theme', newTheme);
-            toggleBtn.textContent = newTheme === 'light' ? '🌙' : '☀️';
-        });
     }
+};
+
+window.toggleTheme = () => {
+    document.body.classList.toggle('light-mode');
+    const isLight = document.body.classList.contains('light-mode');
+    localStorage.setItem('theme', isLight ? 'light' : 'dark');
+    
+    // Update all theme toggle buttons across the DOM
+    document.querySelectorAll('#theme-toggle').forEach(btn => {
+        btn.textContent = isLight ? '🌙' : '☀️';
+    });
 };
 
 const logout = () => {

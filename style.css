@@ -27,7 +27,7 @@
     --border-subtle: rgba(255, 255, 255, 0.05);
 }
 
-[data-theme="light"] {
+body.light-mode {
     --bg-main: #f4f4f4;
     --bg-card: #ffffff;
     --text-primary: #333333;
