@@ -15,6 +15,7 @@
     <header class="app-header">
         <div class="header-content">
             <div class="header-left">
+                <button id="mobile-menu-btn" class="mobile-nav-toggle" onclick="document.querySelector('.sidebar').classList.toggle('mobile-active')">☰</button>
                 <div style="display: flex; align-items: center; gap: 0.75rem;">
                     <img src="logo.png" alt="JR Snooker Logo" style="height: 64px; width: auto; border-radius: 8px;">
                 </div>
@@ -31,6 +32,7 @@
     <div class="app-layout">
         <!-- Left Navigation Sidebar -->
         <aside class="sidebar" style="margin-top: 1.5rem;">
+            <button class="sidebar-close-btn" onclick="document.querySelector('.sidebar').classList.remove('mobile-active')">&times;</button>
             <a href="index.html" class="sidebar-icon" title="Dashboard">🏠</a>
             <a href="reports.html" class="sidebar-icon active" title="Reports">📊</a>
             <a href="admin.html" class="sidebar-icon" id="admin-nav-icon" title="Admin/Players"
@@ -62,7 +64,7 @@
                             style="flex: 1; background: var(--accent-red); color: white;">🛑 Close Day & Reset</button>
                     </div>
 
-                    <div style="overflow-x: auto;">
+                    <div class="table-responsive">
                         <table class="data-table" id="income-table">
                             <thead>
                                 <tr>
@@ -147,7 +149,7 @@
                                 style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
                                 <h3 style="font-size: 1rem; color: var(--text-secondary);">Monthly Payroll Report</h3>
                             </div>
-                            <div style="overflow-x: auto;">
+                            <div class="table-responsive">
                                 <table class="data-table" id="payroll-table">
                                     <thead>
                                         <tr>
@@ -278,7 +280,7 @@
 
                 <!-- Annual Members -->
                 <h3 style="font-size: 1rem; margin-bottom: 0.75rem; color: var(--accent-green);">Annual Members</h3>
-                <div style="overflow-x: auto; margin-bottom: 2rem;">
+                <div class="table-responsive" style="margin-bottom: 2rem;">
                     <table class="data-table" id="dir-annual-table">
                         <thead>
                             <tr>
@@ -301,7 +303,7 @@
                 <!-- Tournament Members -->
                 <h3 style="font-size: 1rem; margin-bottom: 0.75rem; color: var(--accent-warning);">Tournament
                     Participants</h3>
-                <div style="overflow-x: auto;">
+                <div class="table-responsive">
                     <table class="data-table" id="dir-tour-table">
                         <thead>
                             <tr>
