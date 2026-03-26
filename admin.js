@@ -21,7 +21,7 @@ const enforceAuth = () => {
         const hasElevated = (user.permissions && (user.permissions.edit || user.permissions.delete));
         if (!hasElevated) {
             alert("ACCESS DENIED: Master Admin or Edit/Delete Privileges Required.");
-            window.location.href = 'index.html';
+            window.location.href = '/';
         }
     }
 };

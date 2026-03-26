@@ -46,7 +46,7 @@ const handleLogin = (e) => {
         showToast('Login successful! Redirecting...', 'success');
 
         setTimeout(() => {
-            window.location.href = 'index.html';
+            window.location.href = '/';
         }, 800);
     } else {
         showToast('Invalid username or password', 'error');
@@ -78,7 +78,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // If already logged in, skip login
     const current = localStorage.getItem('currentUser');
     if (current) {
-        window.location.href = 'index.html';
+        window.location.href = '/';
     }
 
     const form = document.getElementById('login-form');
