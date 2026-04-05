@@ -218,6 +218,11 @@ const handleStaffCreate = (e) => {
 };
 
 const deleteUser = (index) => {
+    const user = JSON.parse(localStorage.getItem('currentUser') || '{}');
+    if (user.role !== 'admin') {
+        showToast("Access Denied: Only Administrators can cancel games or delete entries.", "error");
+        return;
+    }
     if (confirm("REVOKE ACCESS: Are you sure you want to permanently delete this Staff account?")) {
         let users = JSON.parse(localStorage.getItem('sys_users') || '[]');
         if (users[index].role === 'admin') {
@@ -381,6 +386,11 @@ const renderIncomeOverride = () => {
 };
 
 const deleteIncomeByID = (entryId) => {
+    const user = JSON.parse(localStorage.getItem('currentUser') || '{}');
+    if (user.role !== 'admin') {
+        showToast("Access Denied: Only Administrators can cancel games or delete entries.", "error");
+        return;
+    }
     if (confirm("DANGER: Deleting this income row permanently alters today's revenue. Proceed?")) {
         let income = JSON.parse(localStorage.getItem('dailyIncome') || '[]');
         income = income.filter(e => e.id !== entryId);
@@ -443,6 +453,11 @@ const renderExpenseOverride = () => {
 };
 
 const deleteExpenseByID = (entryId) => {
+    const user = JSON.parse(localStorage.getItem('currentUser') || '{}');
+    if (user.role !== 'admin') {
+        showToast("Access Denied: Only Administrators can cancel games or delete entries.", "error");
+        return;
+    }
     if (confirm("DANGER: Deleting this expense adjusts the Net Profit permanently. Proceed?")) {
         let expenses = JSON.parse(localStorage.getItem('expenses') || '[]');
         expenses = expenses.filter(e => e.id !== entryId);

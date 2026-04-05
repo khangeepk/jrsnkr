@@ -21,6 +21,12 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 
+const getCurrentRole = () => {
+    const userStr = localStorage.getItem('currentUser');
+    if (!userStr) return null;
+    return JSON.parse(userStr).role;
+};
+
 const logout = () => {
     localStorage.removeItem('currentUser');
     window.location.href = 'login.html';
@@ -188,6 +194,10 @@ window.closeProofModal = () => {
 };
 
 window.deleteIncomeEntry = (index) => {
+    if (getCurrentRole() !== 'admin') {
+        showToast("Access Denied: Only Administrators can cancel games or delete entries.", "error");
+        return;
+    }
     if (confirm("Are you sure you want to Delete this income entry?")) {
         let income = getDailyIncome();
         income.splice(index, 1);
@@ -1010,6 +1020,10 @@ const printIDCard = () => {
 // ==========================================
 
 const deleteMember = (memberId, type) => {
+    if (getCurrentRole() !== 'admin') {
+        showToast("Access Denied: Only Administrators can cancel games or delete entries.", "error");
+        return;
+    }
     if (!confirm(`Are you sure you want to PERMANENTLY delete member ${memberId}? This action cannot be undone.`)) return;
 
     if (type === 'Annual') {

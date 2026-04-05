@@ -1160,6 +1160,9 @@ const finalizeSession = (tableId, mode, proofString = null) => {
 };
 
 const confirmPayment = (tableId, playerName, amount, mode, proofString = null) => {
+    if (!getCurrentRole()) {
+        showToast("Error: Unauthenticated user.", "error"); return;
+    }
     // Phase 3 & Part 2 Cumulative Ledger / Debt Tracking
     const profile = getUnifiedPlayerProfile(playerName);
 
@@ -1688,6 +1691,12 @@ window.closeCancelGameModal = () => {
 };
 
 window.executeCancelGame = () => {
+    const role = getCurrentRole();
+    if (role !== 'admin') {
+        showToast("Access Denied: Only Administrators can cancel games or delete entries.", "error");
+        return;
+    }
+
     const pass = document.getElementById('cancel-admin-pass').value;
     const reason = document.getElementById('cancel-reason').value.trim();
     if(!pass || !reason) {
@@ -1712,6 +1721,10 @@ window.executeCancelGame = () => {
     
     const t = tables[tableIndex];
     
+    const user = JSON.parse(localStorage.getItem('currentUser') || '{}');
+    const adminStamp = user.username ? ` [Cancelled by: ${user.username}]` : '';
+    const finalReason = reason + adminStamp;
+
     const sessionData = {
         tableId: t.id,
         gameMode: t.gameMode,
@@ -1723,7 +1736,7 @@ window.executeCancelGame = () => {
         playerName: (t.players && t.players[0]) || t.playerName || 'Unknown',
         payerStatus: 'CANCELLED',
         mode: 'Cancelled',
-        reason: reason
+        reason: finalReason
     };
 
     logSessionToLedger(sessionData);
@@ -1735,7 +1748,7 @@ window.executeCancelGame = () => {
         playerName: sessionData.playerName + ' (CANCELLED)',
         amount: 0,
         mode: 'Cancelled',
-        reason: reason
+        reason: finalReason
     });
     localStorage.setItem('dailyIncome', JSON.stringify(dailyIncome));
     
@@ -1790,6 +1803,9 @@ window.closeShiftTableModal = () => {
 };
 
 window.executeShiftTable = () => {
+    if (!getCurrentRole()) {
+        showToast("Error: Unauthenticated user.", "error"); return;
+    }
     if(!activeShiftSource) return;
     const targetTableId = parseInt(document.getElementById('shift-target-table').value, 10);
     if(isNaN(targetTableId)) return;
