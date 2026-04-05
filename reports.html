@@ -517,13 +517,67 @@
                 </div>
 
                 <!-- Account Ledger Placeholder -->
+                <!-- Phase 3: Account Ledger -->
                 <div class="profile-section" style="background: var(--bg-input); padding: 1.5rem; border-radius: 8px; border: 1px solid var(--border-color);">
-                    <h3 style="margin-bottom: 1rem; color: var(--accent-red);">💳 Account Ledger</h3>
-                    <div id="profile-account-ledger" style="color: var(--text-secondary); text-align: center; padding: 2rem 0; font-style: italic;">
-                        Loading financial logs...
+                    <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem; margin-bottom: 1.25rem;">
+                        <h3 style="margin: 0; color: var(--accent-red);">💳 Account Ledger</h3>
+                        <button id="settle-dues-btn" class="btn btn-cash" onclick="openProfileSettleModal()" style="padding: 0.4rem 1rem; font-size: 0.85rem; display: none;">⚡ Settle Dues</button>
+                    </div>
+
+                    <!-- Financial Summary Widgets -->
+                    <div style="display: flex; gap: 1rem; flex-wrap: wrap; margin-bottom: 1.5rem;">
+                        <div style="flex: 1; min-width: 130px; background: var(--bg-card); border-radius: 8px; padding: 1rem; text-align: center; border: 2px solid var(--accent-red);">
+                            <div id="ledger-outstanding" style="font-size: 1.6rem; font-weight: 700; color: var(--accent-red);">Rs. 0</div>
+                            <div style="font-size: 0.78rem; color: var(--text-secondary); margin-top: 0.25rem;">Outstanding Dues</div>
+                        </div>
+                        <div style="flex: 1; min-width: 130px; background: var(--bg-card); border-radius: 8px; padding: 1rem; text-align: center; border: 2px solid var(--accent-green);">
+                            <div id="ledger-paid" style="font-size: 1.6rem; font-weight: 700; color: var(--accent-green);">Rs. 0</div>
+                            <div style="font-size: 0.78rem; color: var(--text-secondary); margin-top: 0.25rem;">Total Paid (Lifetime)</div>
+                        </div>
+                        <div style="flex: 1; min-width: 130px; background: var(--bg-card); border-radius: 8px; padding: 1rem; text-align: center; border: 1px solid var(--border-color);">
+                            <div id="ledger-txn-count" style="font-size: 1.6rem; font-weight: 700; color: var(--accent-blue);">0</div>
+                            <div style="font-size: 0.78rem; color: var(--text-secondary); margin-top: 0.25rem;">Transactions</div>
+                        </div>
+                    </div>
+
+                    <!-- Transaction Log -->
+                    <div id="profile-account-ledger" style="overflow-x: auto;">
+                        <div style="color: var(--text-secondary); text-align: center; padding: 2rem 0; font-style: italic;">Loading financial logs...</div>
                     </div>
                 </div>
-                
+
+                <!-- Settle Dues Modal (Inline) -->
+                <div id="profile-settle-modal" class="modal">
+                    <div class="modal-content" style="max-width: 420px;">
+                        <div class="modal-header">
+                            <h2 style="color: var(--accent-green);">⚡ Settle Dues</h2>
+                            <button class="close-btn" onclick="closeProfileSettleModal()">&times;</button>
+                        </div>
+                        <div class="modal-body" style="padding: 1.25rem;">
+                            <p style="margin-bottom: 1rem; color: var(--text-secondary); font-size: 0.9rem;">
+                                Settling full outstanding balance for 
+                                <strong id="settle-member-name" style="color: var(--text-primary);"></strong>:
+                                <strong id="settle-amount-display" style="color: var(--accent-red);"></strong>
+                            </p>
+                            <div class="form-group" style="margin-bottom: 1.5rem;">
+                                <label>Select Payment Mode</label>
+                                <select id="settle-mode-select" style="width: 100%;">
+                                    <option value="Cash">Cash</option>
+                                    <option value="Online">Online</option>
+                                </select>
+                            </div>
+                            <div id="settle-proof-section" style="display: none; margin-bottom: 1.5rem;" class="form-group">
+                                <label>Upload Payment Proof (Required for Online)</label>
+                                <input type="file" id="settle-proof-input" accept="image/*">
+                            </div>
+                            <div style="display: flex; gap: 1rem;">
+                                <button class="btn btn-end" style="flex: 1;" onclick="closeProfileSettleModal()">Cancel</button>
+                                <button class="btn btn-cash" style="flex: 2;" onclick="executeProfileSettle()">Confirm Settlement</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <button class="btn btn-end" style="width: 100%; margin-top: 1rem;" onclick="closeMemberProfileModal()">Close Dashboard</button>
             </div>
         </div>

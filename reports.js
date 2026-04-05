@@ -1194,6 +1194,9 @@ const openMemberProfile = (memberId, type) => {
 
     // Phase 2: Load game history on profile open (default: 7 days)
     loadMemberGameHistory('7d');
+
+    // Phase 3: Load member-specific ledger
+    loadMemberLedger(member.name);
 };
 
 const closeMemberProfileModal = () => {
@@ -1356,6 +1359,236 @@ const loadMemberGameHistory = (filter = '7d') => {
     container.innerHTML = tableHtml;
 };
 
+// =============================================================
+// Phase 3: Member-Specific Account Ledger Engine
+// =============================================================
+
+const loadMemberLedger = (memberName) => {
+    if (!memberName) return;
+
+    const dailyIncome = JSON.parse(localStorage.getItem('dailyIncome') || '[]');
+    const players     = JSON.parse(localStorage.getItem('players')     || '[]');
+    const lname       = memberName.toLowerCase().trim();
+
+    // --- Outstanding dues from Global Ledger (players array) ---
+    const playerRecord = players.find(p =>
+        p.name && p.name.toLowerCase().trim() === lname
+    );
+    const outstanding = playerRecord ? (playerRecord.balance || 0) : 0;
+
+    // --- Transaction history from dailyIncome ---
+    // Match rows where playerName starts with or equals the member name
+    const memberTxns = dailyIncome.filter(entry => {
+        if (!entry.playerName) return false;
+        // Support both exact match and "Ledger Settlement" suffix
+        const eName = entry.playerName.toLowerCase().trim();
+        return eName === lname || eName.startsWith(lname + ' ');
+    });
+
+    // Sort newest first
+    memberTxns.sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
+
+    // Compute total paid (only actual received cash — is_pending=false)
+    const totalPaid = memberTxns
+        .filter(t => !t.is_pending)
+        .reduce((s, t) => s + (t.amount || 0), 0);
+
+    const txnCount = memberTxns.length;
+
+    // --- Update summary widgets ---
+    const setEl = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+    setEl('ledger-outstanding', `Rs. ${outstanding}`);
+    setEl('ledger-paid',        `Rs. ${totalPaid}`);
+    setEl('ledger-txn-count',   txnCount);
+
+    // Show/hide "Settle Dues" button based on outstanding
+    const settleBtn = document.getElementById('settle-dues-btn');
+    if (settleBtn) {
+        settleBtn.style.display = outstanding > 0 ? 'inline-block' : 'none';
+    }
+
+    // --- Render transaction log table ---
+    const container = document.getElementById('profile-account-ledger');
+    if (!container) return;
+
+    if (txnCount === 0 && outstanding === 0) {
+        container.innerHTML = `<div style="color: var(--text-secondary); text-align: center; padding: 2rem 0; font-style: italic;">No financial transactions found for this member.</div>`;
+        return;
+    }
+
+    let tableHtml = `
+        <table class="data-table" style="width: 100%; font-size: 0.85rem;">
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Description</th>
+                    <th>Mode</th>
+                    <th>Amount</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+    `;
+
+    if (txnCount === 0) {
+        tableHtml += `<tr><td colspan="5" style="text-align:center; color: var(--text-secondary); padding: 1.5rem;">No payment transactions recorded.</td></tr>`;
+    } else {
+        memberTxns.forEach(t => {
+            const dateStr = t.date ? new Date(t.date).toLocaleDateString() : '-';
+            const timeStr = t.date ? new Date(t.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
+            const isPending  = t.is_pending;
+            const statusText = isPending ? 'Pending' : 'Paid';
+            const statusColor = isPending ? 'var(--accent-warning)' : 'var(--accent-green)';
+            const amtColor   = isPending ? 'var(--accent-red)' : 'var(--accent-green)';
+            const desc = t.playerName || memberName;
+
+            tableHtml += `
+                <tr>
+                    <td>${dateStr}<br><span style="color:var(--text-secondary);font-size:0.75rem;">${timeStr}</span></td>
+                    <td style="max-width:160px; word-break:break-word;">${desc}</td>
+                    <td>${t.mode || '-'}</td>
+                    <td style="font-weight:600; color:${amtColor};">Rs. ${t.amount || 0}</td>
+                    <td><span style="font-weight:600; color:${statusColor};">${statusText}</span></td>
+                </tr>
+            `;
+        });
+    }
+
+    // Show outstanding row if balance > 0 and no pending row
+    if (outstanding > 0) {
+        tableHtml += `
+            <tr style="background: rgba(239,68,68,0.08);">
+                <td colspan="3" style="font-weight:700; color:var(--accent-red);">⚠️ Current Outstanding Balance</td>
+                <td style="font-weight:700; color:var(--accent-red);">Rs. ${outstanding}</td>
+                <td><span style="font-weight:600; color:var(--accent-red);">UNPAID</span></td>
+            </tr>
+        `;
+    }
+
+    tableHtml += `</tbody></table>`;
+    container.innerHTML = tableHtml;
+};
+
+// --- Settle Dues from Profile ---
+let _settleProfileMemberName = null;
+let _settleProfileAmount = 0;
+
+const openProfileSettleModal = () => {
+    const memberName  = _activeProfileMemberName;
+    const players     = JSON.parse(localStorage.getItem('players') || '[]');
+    const playerRecord = players.find(p => p.name && p.name.toLowerCase().trim() === (memberName || '').toLowerCase().trim());
+    const outstanding = playerRecord ? (playerRecord.balance || 0) : 0;
+
+    if (outstanding <= 0) {
+        showToast('No outstanding dues to settle.', 'info');
+        return;
+    }
+
+    _settleProfileMemberName = memberName;
+    _settleProfileAmount = outstanding;
+
+    document.getElementById('settle-member-name').textContent = memberName;
+    document.getElementById('settle-amount-display').textContent = ` Rs. ${outstanding}`;
+    document.getElementById('settle-mode-select').value = 'Cash';
+    document.getElementById('settle-proof-section').style.display = 'none';
+    document.getElementById('settle-proof-input').value = '';
+    document.getElementById('profile-settle-modal').style.display = 'block';
+
+    // Toggle proof visibility on mode change
+    document.getElementById('settle-mode-select').onchange = function() {
+        document.getElementById('settle-proof-section').style.display =
+            this.value === 'Online' ? 'block' : 'none';
+    };
+};
+
+const closeProfileSettleModal = () => {
+    document.getElementById('profile-settle-modal').style.display = 'none';
+    _settleProfileMemberName = null;
+    _settleProfileAmount = 0;
+};
+
+const executeProfileSettle = async () => {
+    const memberName = _settleProfileMemberName;
+    const amount     = _settleProfileAmount;
+    const mode       = document.getElementById('settle-mode-select').value;
+
+    if (!memberName || amount <= 0) return;
+
+    let proofBase64 = null;
+    if (mode === 'Online') {
+        const fileInput = document.getElementById('settle-proof-input');
+        if (!fileInput.files || fileInput.files.length === 0) {
+            showToast('Please upload a payment screenshot for Online settlement.', 'error');
+            return;
+        }
+        try {
+            proofBase64 = await processAdminImageReports(fileInput.files[0]);
+        } catch(e) {
+            showToast('Failed to process proof image.', 'error');
+            return;
+        }
+    }
+
+    // 1. Zero out the player's balance
+    const players = JSON.parse(localStorage.getItem('players') || '[]');
+    const idx = players.findIndex(p => p.name && p.name.toLowerCase().trim() === memberName.toLowerCase().trim());
+    if (idx !== -1) {
+        players[idx].balance = 0;
+        localStorage.setItem('players', JSON.stringify(players));
+    }
+
+    // 2. Log to dailyIncome
+    const dailyIncome = JSON.parse(localStorage.getItem('dailyIncome') || '[]');
+    dailyIncome.push({
+        id: Date.now(),
+        date: new Date().toISOString(),
+        playerName: memberName + ' (Profile Settlement)',
+        amount: amount,
+        mode: mode,
+        is_pending: false,
+        proof_image: proofBase64
+    });
+    localStorage.setItem('dailyIncome', JSON.stringify(dailyIncome));
+
+    // 3. Refresh the UI
+    closeProfileSettleModal();
+    loadMemberLedger(memberName);
+
+    // 4. Hide settle button since dues cleared
+    const settleBtn = document.getElementById('settle-dues-btn');
+    if (settleBtn) settleBtn.style.display = 'none';
+
+    showToast(`Rs. ${amount} settled for ${memberName} via ${mode}.`, 'success');
+};
+
+// Simple image processor for reports context (no dependency on app.js)
+const processAdminImageReports = (file) => {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const img = new Image();
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                const MAX = 800;
+                let { width, height } = img;
+                if (width > height) {
+                    if (width > MAX) { height = Math.round(height * MAX / width); width = MAX; }
+                } else {
+                    if (height > MAX) { width = Math.round(width * MAX / height); height = MAX; }
+                }
+                canvas.width = width;
+                canvas.height = height;
+                canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+                resolve(canvas.toDataURL('image/jpeg', 0.65));
+            };
+            img.onerror = reject;
+            img.src = e.target.result;
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+    });
+};
+
 window.calculateAnnualExpiry = calculateAnnualExpiry;
 window.processImage = processImage;
 window.addAnnualMember = addAnnualMember;
@@ -1370,6 +1603,9 @@ window.filterMemberDirectory = filterMemberDirectory;
 window.openMemberProfile = openMemberProfile;
 window.closeMemberProfileModal = closeMemberProfileModal;
 window.loadMemberGameHistory = loadMemberGameHistory;
+window.openProfileSettleModal = openProfileSettleModal;
+window.closeProfileSettleModal = closeProfileSettleModal;
+window.executeProfileSettle = executeProfileSettle;
 window.logout = logout;
 window.showCCTVModal = showCCTVModal;
 window.closeCCTVModal = closeCCTVModal;
