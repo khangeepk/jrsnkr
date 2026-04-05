@@ -90,11 +90,11 @@ const renderUsersTable = () => {
     const tbody = document.getElementById('users-tbody');
     tbody.innerHTML = '';
 
-    // Ensure array exists
     if (!localStorage.getItem('sys_users')) {
         localStorage.setItem('sys_users', JSON.stringify([
             { username: 'admin', password: 'password', role: 'admin' },
-            { username: 'staff', password: 'password', role: 'staff' }
+            { username: 'manager', password: 'password', role: 'manager' },
+            { username: 'cashier', password: 'password', role: 'cashier' }
         ]));
     }
 

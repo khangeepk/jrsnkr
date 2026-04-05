@@ -6,7 +6,8 @@ const seedUsers = () => {
     if (!users) {
         const defaultUsers = [
             { username: 'admin', password: 'password', role: 'admin' },
-            { username: 'staff', password: 'password', role: 'staff' }
+            { username: 'manager', password: 'password', role: 'manager' },
+            { username: 'cashier', password: 'password', role: 'cashier' }
         ];
         localStorage.setItem('sys_users', JSON.stringify(defaultUsers));
     }
@@ -21,8 +22,9 @@ const handleLogin = (e) => {
 
     // Hardcoded fallback just in case
     const match = users.find(u => u.username === userIn && u.password === passIn) ||
-        (userIn === 'admin' && passIn === 'admin' ? { username: 'admin', role: 'admin' } : null) ||
-        (userIn === 'staff' && passIn === 'staff' ? { username: 'staff', role: 'staff' } : null);
+        (userIn === 'admin' && passIn === 'password' ? { username: 'admin', role: 'admin' } : null) ||
+        (userIn === 'manager' && passIn === 'password' ? { username: 'manager', role: 'manager' } : null) ||
+        (userIn === 'cashier' && passIn === 'password' ? { username: 'cashier', role: 'cashier' } : null);
 
     if (match) {
         // Fallback for older data or hardcoded users
