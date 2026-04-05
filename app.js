@@ -46,15 +46,70 @@ const logout = () => {
 
 // --- 1. Database Mock & Constants (Ultra-Light) ---
 
+// =============================================================
+// PRICING ENGINE v2 — Phase 1 Overhaul
+// Single  : 250 PKR (Member) / 350 PKR (Non-Member) base, popup @20m
+// Double  : 500 PKR (Member) / 700 PKR (Non-Member) base for ≤30m, popup @30m
+// Century : Pure per-minute from minute 1, no flat rate
+// Overtime: 12 PKR/min (Member) / 15 PKR/min (Non-Member)
+// No initial grace period — billing starts from minute 1
+// =============================================================
 const PRICING = {
-    Member: { base: 250, perMinute: 12 },
-    "Non-Member": { base: 350, perMinute: 15 }
+    Member:       { singleBase: 250, doubleBase: 500, perMinute: 12 },
+    "Non-Member": { singleBase: 350, doubleBase: 700, perMinute: 15 }
 };
 
+// Alert popup triggers (minutes)
 const THRESHOLDS = {
-    Single: 25,
-    Double: 35,
-    Century: 35
+    Single:  20,   // popup at 20m — Stop ends game, Resume gives 5-min grace then per-minute
+    Double:  30,   // popup at 30m — after 30m charge per-minute
+    Century: 9999  // no popup — pure per-minute from minute 1
+};
+
+// ---------------------------------------------------------------
+// calculateBill — single source of truth for all billing maths
+// ---------------------------------------------------------------
+const calculateBill = (gameMode, totalMinutes, activePlayers) => {
+    const memberCount    = activePlayers.filter(p => getUnifiedPlayerProfile(p).status === 'Member').length;
+    const nonMemberCount = activePlayers.length - memberCount;
+    const majorityMember = memberCount >= nonMemberCount && memberCount > 0;
+
+    if (gameMode === 'Double') {
+        // Base: 500 (Member majority) or 700 (Non-Member majority) for ≤30 min
+        const baseRate = majorityMember ? PRICING['Member'].doubleBase : PRICING['Non-Member'].doubleBase;
+        if (totalMinutes <= 30) {
+            return { bill: baseRate, baseRateApplied: true };
+        }
+        const overtime = totalMinutes - 30;
+        const overtimeBill = _mixedPerMinute(overtime, memberCount, nonMemberCount, activePlayers.length);
+        return { bill: baseRate + overtimeBill, baseRateApplied: false };
+
+    } else if (gameMode === 'Century') {
+        // Strict per-minute from minute 1 — no flat rate
+        const bill = _mixedPerMinute(totalMinutes, memberCount, nonMemberCount, activePlayers.length);
+        return { bill, baseRateApplied: false };
+
+    } else {
+        // Single — base rate for ≤20 min, per-minute after
+        const baseRate = majorityMember ? PRICING['Member'].singleBase : PRICING['Non-Member'].singleBase;
+        if (totalMinutes <= 20) {
+            return { bill: baseRate, baseRateApplied: true };
+        }
+        // Beyond 20 mins: charge per-minute for ALL minutes elapsed
+        const bill = _mixedPerMinute(totalMinutes, memberCount, nonMemberCount, activePlayers.length);
+        return { bill, baseRateApplied: false };
+    }
+};
+
+// Helper: blended per-minute cost for a mix of members/non-members
+const _mixedPerMinute = (minutes, memberCount, nonMemberCount, totalPlayers) => {
+    if (memberCount > 0 && nonMemberCount > 0) {
+        return minutes * 12 * (memberCount / totalPlayers) +
+               minutes * 15 * (nonMemberCount / totalPlayers);
+    } else if (memberCount > 0) {
+        return minutes * 12;
+    }
+    return minutes * 15;
 };
 
 const initDB = () => {
@@ -243,7 +298,7 @@ const renderTables = () => {
                 </div>
                 <!-- Small decorative limit hint -->
                 <div style="text-align: center; font-size: 0.7rem; color: var(--text-secondary); margin-top: 0.3rem;">
-                    ${(table.gameMode || 'Single').toUpperCase()} ${(table.gameMode || 'Single') !== 'Century' ? ((table.gameMode || 'Single') === 'Single' ? '25m Limit' : '35m Limit') : 'No Limit'}
+                    ${(table.gameMode || 'Single').toUpperCase()} ${(table.gameMode || 'Single') === 'Single' ? '20m Limit' : (table.gameMode || 'Single') === 'Double' ? '30m Limit' : 'Per-Minute'}
                 </div>
             </div>
 
@@ -889,83 +944,14 @@ const recalculateBill = (tableId) => {
     const payerName = payerSelect.value;
     const profile = getUnifiedPlayerProfile(payerName);
 
-    let totalBill = 0;
-
-    // Universal 5-Minute Rule
-    if (sessionData.totalMinutes <= 5) {
-        totalBill = 0;
-        sessionData.baseRateApplied = true;
-    } else {
-        // Double Mode Fixed Rates
-        if (sessionData.gameMode === 'Double') {
-            // Count Members vs Non-Members in the active game
-            let memberCount = 0;
-            let nonMemberCount = 0;
-
-            sessionData.activePlayers.forEach(p => {
-                const pInfo = getUnifiedPlayerProfile(p);
-                if (pInfo.status === 'Member') memberCount++;
-                else nonMemberCount++;
-            });
-
-            // Majority rules the fixed base rate for the table
-            const baseFixedRate = (memberCount >= nonMemberCount && memberCount > 0) ? 500 : 700;
-
-            if (sessionData.totalMinutes <= 35) {
-                totalBill = baseFixedRate;
-                sessionData.baseRateApplied = true;
-            } else {
-                const overtime = sessionData.totalMinutes - 35;
-                // Mixed rate calculation for overtime part
-                let overtimeBill = 0;
-
-                if (memberCount > 0 && nonMemberCount > 0) {
-                    // Split the overtime proportionately if mixed
-                    const memberShare = overtime * 12 * (memberCount / sessionData.activePlayers.length);
-                    const nonMemberShare = overtime * 15 * (nonMemberCount / sessionData.activePlayers.length);
-                    overtimeBill = memberShare + nonMemberShare;
-                } else if (memberCount > 0) {
-                    overtimeBill = overtime * 12;
-                } else {
-                    overtimeBill = overtime * 15;
-                }
-
-                totalBill = baseFixedRate + overtimeBill;
-                sessionData.baseRateApplied = false;
-            }
-        } else {
-            // Single / Century Modes (Mixed Player Validations)
-            let memberCount = 0;
-            let nonMemberCount = 0;
-
-            sessionData.activePlayers.forEach(p => {
-                const pInfo = getUnifiedPlayerProfile(p);
-                if (pInfo.status === 'Member') memberCount++;
-                else nonMemberCount++;
-            });
-
-            if (sessionData.totalMinutes <= sessionData.limit) {
-                // Determine base rate based on majority
-                const baseRate = (memberCount >= nonMemberCount && memberCount > 0) ? PRICING["Member"].base : PRICING["Non-Member"].base;
-                totalBill = baseRate;
-                sessionData.baseRateApplied = true;
-            } else {
-                // Calculate mixed per-minute total
-                if (memberCount > 0 && nonMemberCount > 0) {
-                    const memberShare = sessionData.totalMinutes * 12 * (memberCount / sessionData.activePlayers.length);
-                    const nonMemberShare = sessionData.totalMinutes * 15 * (nonMemberCount / sessionData.activePlayers.length);
-                    totalBill = memberShare + nonMemberShare;
-                } else if (memberCount > 0) {
-                    totalBill = sessionData.totalMinutes * 12;
-                } else {
-                    totalBill = sessionData.totalMinutes * 15;
-                }
-                sessionData.baseRateApplied = false;
-            }
-        }
-    }
-
-    totalBill = Math.ceil(totalBill);
+    // --- Phase 1 Billing Engine ---
+    const { bill, baseRateApplied } = calculateBill(
+        sessionData.gameMode,
+        sessionData.totalMinutes,
+        sessionData.activePlayers
+    );
+    let totalBill = Math.ceil(bill);
+    sessionData.baseRateApplied = baseRateApplied;
 
     // Embed current bill status into the object before logging
     sessionData.playerName = payerName;
@@ -1286,81 +1272,112 @@ const updateElapsedTimes = () => {
 
     const tick = () => {
         const now = Date.now();
-        activeTables.forEach(t => {
-            const el = document.getElementById(`elapsed-${t.id}`);
+        // Re-read tables each tick so we pick up alertedLimit flags
+        const currentTables = getTablesState();
+        currentTables.filter(t => t.isActive).forEach(t => {
+            const el   = document.getElementById(`elapsed-${t.id}`);
             const card = document.getElementById(`table-card-${t.id}`);
-            if (el) {
-                const diffMs = now - t.startTime;
-                const totalMinutes = Math.floor(diffMs / 60000);
-                el.innerText = `${totalMinutes}m`;
+            if (!el) return;
 
-                // Phase 5 Grace Period Class Logic & Phase 10 Visual Limit Popups
-                if (card) {
-                    const limit = THRESHOLDS[t.gameMode] || 25;
-                    const graceThreshold = limit - 5;
+            const diffMs       = now - t.startTime;
+            const totalMinutes = Math.floor(diffMs / 60000);
+            el.innerText       = `${totalMinutes}m`;
 
-                    if (totalMinutes >= limit) {
-                        card.classList.remove('grace-period');
-                        
-                        // Precise Time-Limit Popup Check (Phase 10 / Step 5)
-                        // Trigger only at the exact minute mark
-                        if (!t.alertedLimit) {
-                            if ((t.gameMode === 'Single' && totalMinutes === 25) || 
-                                (t.gameMode === 'Double' && totalMinutes === 35)) {
-                                
-                                t.alertedLimit = true;
-                                saveTablesState(tables); 
-                                showTimerPopup(t.id, totalMinutes);
-                            }
-                        }
-                    } else if (totalMinutes >= graceThreshold) {
-                        card.classList.add('grace-period');
-                    } else {
-                        card.classList.remove('grace-period');
+            if (!card) return;
+
+            // --- Visual Grace Indicator (5 min warning before popup) ---
+            // Single: warn at 15m (popup @20m); Double: warn at 25m (popup @30m)
+            const popupTrigger    = THRESHOLDS[t.gameMode] || 9999;
+            const graceWarnStart  = popupTrigger - 5;
+
+            if (t.gameMode === 'Century') {
+                // Century has no popup — just show elapsed, no class changes
+                card.classList.remove('grace-period');
+            } else if (totalMinutes >= popupTrigger) {
+                card.classList.remove('grace-period');
+
+                // Fire popup exactly once at the trigger minute
+                if (!t.alertedLimit) {
+                    // Persist flag immediately to avoid re-triggering
+                    const allTables = getTablesState();
+                    const idx = allTables.findIndex(x => x.id === t.id);
+                    if (idx !== -1) {
+                        allTables[idx].alertedLimit = true;
+                        saveTablesState(allTables);
                     }
+                    showTimerPopup(t.id, popupTrigger, t.gameMode);
                 }
+            } else if (totalMinutes >= graceWarnStart) {
+                card.classList.add('grace-period');
+            } else {
+                card.classList.remove('grace-period');
             }
         });
     };
 
-const showTimerPopup = (tableId, limit) => {
-    const modalId = `timer-popup-${tableId}`;
-    let modal = document.getElementById(modalId);
-    if (!modal) {
-        modal = document.createElement('div');
-        modal.id = modalId;
-        modal.className = 'modal';
-        modal.innerHTML = `
-            <div class="modal-content" style="max-width: 450px; text-align: center; border: 2px solid var(--accent-blue);">
-                <h2 style="color: var(--accent-blue); margin-bottom: 1rem;">⏱️ Time Limit Reached</h2>
-                <div style="margin-bottom: 1.5rem; font-size: 1.1rem;">
-                    Table <strong>${tableId}</strong> has reached the <strong>${limit}:00</strong> minute limit.
-                    <br><br>
-                    Do you want to Stop or Continue?
-                </div>
-                <div style="display: flex; gap: 1rem;">
-                    <button class="btn btn-end" style="flex: 1;" onclick="handleTimerStop(${tableId})">STOP</button>
-                    <button class="btn btn-start" style="flex: 1;" onclick="handleTimerContinue(${tableId})">CONTINUE</button>
-                </div>
-            </div>
-        `;
-        document.body.appendChild(modal);
+    // showTimerPopup — Phase 1 overhaul
+    // Single  popup: Stop ends game | Resume = 5-min grace then per-minute charged
+    // Double  popup: Stop ends game | Resume = continue at per-minute rate
+const showTimerPopup = (tableId, triggerMin, gameMode) => {
+    // Remove any stale modal first so copy is always fresh
+    const staleModal = document.getElementById(`timer-popup-${tableId}`);
+    if (staleModal) staleModal.remove();
+
+    const modal = document.createElement('div');
+    modal.id        = `timer-popup-${tableId}`;
+    modal.className = 'modal';
+
+    let bodyText = '';
+    let resumeLabel = 'RESUME';
+
+    if (gameMode === 'Single') {
+        bodyText = `Table <strong>${tableId}</strong> has reached the <strong>${triggerMin}:00</strong> minute Single Game limit.<br><br>
+            <strong>STOP</strong> — End game and calculate bill now.<br>
+            <strong>RESUME</strong> — Grant 5-min grace period, then charge <em>per minute</em>.`;
+    } else {
+        // Double
+        bodyText = `Table <strong>${tableId}</strong> has reached the <strong>${triggerMin}:00</strong> minute Double Game limit.<br><br>
+            <strong>STOP</strong> — End game and calculate bill now.<br>
+            <strong>RESUME</strong> — Continue at per-minute rate (12 PKR/min Member · 15 PKR/min Non-Member).`;
     }
+
+    modal.innerHTML = `
+        <div class="modal-content" style="max-width: 480px; text-align: center; border: 2px solid var(--accent-blue);">
+            <h2 style="color: var(--accent-blue); margin-bottom: 1rem;">⏱️ Time Limit Reached</h2>
+            <div style="margin-bottom: 1.5rem; font-size: 1rem; line-height: 1.6;">${bodyText}</div>
+            <div style="display: flex; gap: 1rem;">
+                <button class="btn btn-end"   style="flex: 1; font-size: 1rem;" onclick="handleTimerStop(${tableId})">STOP</button>
+                <button class="btn btn-start" style="flex: 1; font-size: 1rem;" onclick="handleTimerResume(${tableId}, '${gameMode}')">${resumeLabel}</button>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(modal);
     modal.style.display = 'block';
 };
 
 window.handleTimerStop = (tableId) => {
-    document.getElementById(`timer-popup-${tableId}`).style.display = 'none';
+    const m = document.getElementById(`timer-popup-${tableId}`);
+    if (m) m.style.display = 'none';
     endSession(tableId);
 };
 
-window.handleTimerContinue = (tableId) => {
-    document.getElementById(`timer-popup-${tableId}`).style.display = 'none';
-    showToast(`Table ${tableId} session continued.`, 'success');
+window.handleTimerResume = (tableId, gameMode) => {
+    const m = document.getElementById(`timer-popup-${tableId}`);
+    if (m) m.style.display = 'none';
+
+    if (gameMode === 'Single') {
+        // Grant exactly 5-minute grace, then the next per-minute charges kick in
+        showToast(`Table ${tableId}: 5-minute grace granted. Charges resume per-minute after time.`, 'success');
+        // Rewind start time by 20 min so elapsed re-bases at 0 of grace window
+        // (billing uses actual elapsed, so no start-time manipulation needed —
+        //  calculateBill already charges per-minute for minutes > 20)
+    } else {
+        showToast(`Table ${tableId}: Resumed — per-minute rate now active.`, 'success');
+    }
 };
 
     tick(); // Initial call
-    timerInterval = setInterval(tick, 60000); // Only update every minute to save CPU
+    timerInterval = setInterval(tick, 60000); // Update every minute
 };
 
 // --- Utils ---
@@ -1466,76 +1483,15 @@ const executeTransfer = () => {
     const endTime = Date.now();
     const diffMs = endTime - sourceTable.startTime;
     const totalMinutes = Math.floor(diffMs / 60000);
-    const limit = THRESHOLDS[sourceTable.gameMode] || 25;
-
-    let totalBill = 0;
     const payerName = (sourceTable.players && sourceTable.players[0]) ? sourceTable.players[0] : sourceTable.playerName;
     const profile = getUnifiedPlayerProfile(payerName);
 
-    if (totalMinutes <= 5) {
-        totalBill = 0;
-    } else {
-        if (sourceTable.gameMode === 'Double') {
-            let memberCount = 0;
-            let nonMemberCount = 0;
+    const activePlayers = (sourceTable.players || []).filter(p => p.trim() !== '');
+    if (activePlayers.length === 0 && sourceTable.playerName) activePlayers.push(sourceTable.playerName);
 
-            const activePlayers = (sourceTable.players || []).filter(p => p.trim() !== '');
-            if (activePlayers.length === 0 && sourceTable.playerName) activePlayers.push(sourceTable.playerName);
-
-            activePlayers.forEach(p => {
-                const pInfo = getUnifiedPlayerProfile(p);
-                if (pInfo.status === 'Member') memberCount++;
-                else nonMemberCount++;
-            });
-
-            const baseFixedRate = (memberCount >= nonMemberCount && memberCount > 0) ? 500 : 700;
-
-            if (totalMinutes <= 35) {
-                totalBill = baseFixedRate;
-            } else {
-                const overtime = totalMinutes - 35;
-                let overtimeBill = 0;
-                if (memberCount > 0 && nonMemberCount > 0) {
-                    const memberShare = overtime * 12 * (memberCount / activePlayers.length);
-                    const nonMemberShare = overtime * 15 * (nonMemberCount / activePlayers.length);
-                    overtimeBill = memberShare + nonMemberShare;
-                } else if (memberCount > 0) {
-                    overtimeBill = overtime * 12;
-                } else {
-                    overtimeBill = overtime * 15;
-                }
-                totalBill = baseFixedRate + overtimeBill;
-            }
-        } else {
-            let memberCount = 0;
-            let nonMemberCount = 0;
-
-            const activePlayers = (sourceTable.players || []).filter(p => p.trim() !== '');
-            if (activePlayers.length === 0 && sourceTable.playerName) activePlayers.push(sourceTable.playerName);
-
-            activePlayers.forEach(p => {
-                const pInfo = getUnifiedPlayerProfile(p);
-                if (pInfo.status === 'Member') memberCount++;
-                else nonMemberCount++;
-            });
-
-            if (totalMinutes <= limit) {
-                const baseRate = (memberCount >= nonMemberCount && memberCount > 0) ? PRICING["Member"].base : PRICING["Non-Member"].base;
-                totalBill = baseRate;
-            } else {
-                if (memberCount > 0 && nonMemberCount > 0) {
-                    const memberShare = totalMinutes * 12 * (memberCount / activePlayers.length);
-                    const nonMemberShare = totalMinutes * 15 * (nonMemberCount / activePlayers.length);
-                    totalBill = memberShare + nonMemberShare;
-                } else if (memberCount > 0) {
-                    totalBill = totalMinutes * 12;
-                } else {
-                    totalBill = totalMinutes * 15;
-                }
-            }
-        }
-    }
-    totalBill = Math.ceil(totalBill);
+    // Phase 1: use unified calculateBill
+    const { bill } = calculateBill(sourceTable.gameMode, totalMinutes, activePlayers);
+    let totalBill = Math.ceil(bill);
 
     // 2. Add transfer amount to Target Table's cumulative transferred balance
     // Ensure we preserve any existing transfers Target Table might have already received
