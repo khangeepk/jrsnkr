@@ -502,6 +502,12 @@ const generatePlayerInputsHtml = (table, isRunning) => {
 };
 
 const updatePlayerState = (tableId, index, value) => {
+    // Phase 4: Identity Resolution (Auto-swap valid ID to Name)
+    const profile = getUnifiedPlayerProfile(value);
+    if (profile.member_id && profile.member_id.toLowerCase() === value.trim().toLowerCase() && profile.name) {
+        value = profile.name;
+    }
+
     const tables = getTablesState();
     const t = tables.find(x => x.id === tableId);
     if (t) {

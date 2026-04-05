@@ -473,6 +473,15 @@ const addAnnualMember = async (event) => {
             return;
         }
 
+        const annuals = getAnnualMembers();
+        const tours = getTournamentMembers();
+        const allMembers = [...annuals, ...tours];
+        
+        if (allMembers.some(m => m.phone === phone)) {
+            alert(`Error: The mobile number ${phone} is already registered to another member.`);
+            return;
+        }
+
         showToast("Processing registration...", "info");
 
         // Use the new compression utility
@@ -533,11 +542,21 @@ const addTournamentMember = async (event) => {
     try {
         const name = document.getElementById('tour-name').value.trim();
         const tourId = document.getElementById('tour-id').value.trim();
+        const phone = document.getElementById('tour-phone').value.trim();
         const status = document.getElementById('tour-status').value;
         const photoInput = document.getElementById('tour-photo').files[0];
 
-        if (!name || !tourId) {
+        if (!name || !phone || !tourId) {
             showToast("Please fill all fields.", "error");
+            return;
+        }
+
+        const annuals = getAnnualMembers();
+        const tours = getTournamentMembers();
+        const allMembers = [...annuals, ...tours];
+        
+        if (allMembers.some(m => m.phone === phone)) {
+            alert(`Error: The mobile number ${phone} is already registered to another member.`);
             return;
         }
 
@@ -561,6 +580,7 @@ const addTournamentMember = async (event) => {
             id: Date.now(),
             member_id: memberId,
             name,
+            phone,
             tournament_id: tourId,
             type: 'Tournament',
             fee: 1500,
@@ -575,6 +595,7 @@ const addTournamentMember = async (event) => {
         showToast(`Registered Tournament Participant: ${name}`);
 
         document.getElementById('tour-name').value = '';
+        document.getElementById('tour-phone').value = '';
         document.getElementById('tour-id').value = '';
         document.getElementById('tour-photo').value = '';
 
