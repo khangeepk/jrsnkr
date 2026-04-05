@@ -16,7 +16,14 @@ const enforceAuth = () => {
         return;
     }
     const user = JSON.parse(userStr);
-    if (user.role !== 'admin') {
+    
+    // Hard restrictions for Cashier
+    if (user.role === 'cashier') {
+        window.location.href = '/';
+        return;
+    }
+    
+    if (user.role !== 'admin' && user.role !== 'manager') {
         // Staff accessing Admin panel - must have edit or delete perms
         const hasElevated = (user.permissions && (user.permissions.edit || user.permissions.delete));
         if (!hasElevated) {
@@ -340,7 +347,7 @@ const renderIncomeOverride = () => {
 
         const delBtn = canDelete
             ? `<button class="btn btn-end" style="padding: 0.2rem 0.6rem; font-size: 0.8rem;" data-id="${entry.id}">Delete</button>`
-            : `<button class="btn btn-end" style="padding: 0.2rem 0.6rem; font-size: 0.8rem; opacity: 0.5; cursor: not-allowed;" disabled>No Delete</button>`;
+            : ``;
 
         let proofBtnHtml = '';
         if (entry.mode === 'Online' && entry.proof_image) {
@@ -412,7 +419,7 @@ const renderExpenseOverride = () => {
 
         const delBtn = canDelete
             ? `<button class="btn btn-end" style="padding: 0.2rem 0.6rem; font-size: 0.8rem;" data-expid="${entry.id}">Delete</button>`
-            : `<button class="btn btn-end" style="padding: 0.2rem 0.6rem; font-size: 0.8rem; opacity: 0.5; cursor: not-allowed;" disabled>No Delete</button>`;
+            : ``;
 
         const tr = document.createElement('tr');
         tr.innerHTML = `
@@ -691,12 +698,25 @@ document.addEventListener('DOMContentLoaded', () => {
     const userStr = localStorage.getItem('currentUser');
     const user = JSON.parse(userStr || '{}');
 
-    if (user.role === 'staff') {
+    if (user.role === 'staff' || user.role === 'manager') {
         const userMgmtPanel = document.getElementById('user-mgmt-panel');
-        if (userMgmtPanel) userMgmtPanel.style.display = 'none';
+        if (userMgmtPanel) userMgmtPanel.remove(); // System Settings/User Mgmt -> Removed
 
         const statBadge = document.querySelector('.stats .stat-badge');
         if (statBadge) statBadge.textContent = 'DATA OVERRIDE MODE';
+        
+        if (user.role === 'manager') {
+            // "Manager View Restrictions... HIDE any "Delete Entry", "Cancel Game", or "System Settings" buttons."
+            // Manager shouldn't even see the DB overrides or payment settings
+            // Because they shouldn't edit/delete. Let's remove them all except player ledger!
+            const allPanels = document.querySelectorAll('.report-panel');
+            allPanels.forEach(panel => {
+                if (panel.id !== 'player-ledger-panel') {
+                    panel.remove();
+                }
+            });
+            // Also ensure we remove any straggling delete buttons! (Though theoretically handled below)
+        }
     }
 
     renderUsersTable();

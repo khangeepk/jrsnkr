@@ -1,11 +1,25 @@
-// Phase 8: Authentication Guard
 const enforceAuth = () => {
-    const user = localStorage.getItem('currentUser');
-    if (!user) {
+    const userStr = localStorage.getItem('currentUser');
+    if (!userStr) {
         window.location.href = 'login.html';
+        return;
+    }
+    const user = JSON.parse(userStr);
+    if (user.role === 'cashier') {
+        window.location.href = '/';
     }
 };
 enforceAuth();
+
+document.addEventListener('DOMContentLoaded', () => {
+    const userStr = localStorage.getItem('currentUser');
+    if (userStr) {
+        const user = JSON.parse(userStr);
+        if (user.role === 'manager') {
+            // Manager keeps admin.html link because they need Player Ledger
+        }
+    }
+});
 
 const logout = () => {
     localStorage.removeItem('currentUser');
@@ -782,11 +796,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const hasElevated = user.role === 'admin' || (user.permissions && (user.permissions.edit || user.permissions.delete));
         if (hasElevated) {
-            // Un-hide Admin link in the sidebar
+            // Admin link is visible for elevated, but wait, the prompt says Admin View has the User Management tab.
             const adminIcon = document.getElementById('admin-nav-icon');
-            if (adminIcon) {
-                adminIcon.style.display = 'flex';
-            }
+            if (adminIcon) adminIcon.style.display = 'flex';
         }
     }
 

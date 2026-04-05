@@ -15,6 +15,20 @@ const hasPerm = (action) => {
     return user.permissions && user.permissions[action] === true;
 };
 
+const getCurrentRole = () => {
+    const userStr = localStorage.getItem('currentUser');
+    if (!userStr) return null;
+    return JSON.parse(userStr).role;
+};
+
+document.addEventListener('DOMContentLoaded', () => {
+    const role = getCurrentRole();
+    if (role === 'cashier') {
+        document.querySelectorAll('a[href="reports.html"]').forEach(el => el.remove());
+        document.querySelectorAll('a[href="admin.html"]').forEach(el => el.remove());
+    }
+});
+
 const setupTheme = () => {
     const savedTheme = localStorage.getItem('theme') || 'dark';
     if (savedTheme === 'light') {
@@ -372,7 +386,7 @@ const renderTables = () => {
                 <div style="display: flex; gap: 0.5rem; margin-bottom: 0.5rem;">
                 ${isRunning ? `
                     <button class="btn btn-online" style="flex:1; padding: 0.5rem; font-size: 0.85rem;" onclick="openShiftTableModal(${table.id})">SHIFT TABLE</button>
-                    <button class="btn btn-end" style="flex:1; padding: 0.5rem; font-size: 0.85rem; background: var(--accent-red);" onclick="openCancelGameModal(${table.id})">CANCEL GAME</button>
+                    ${getCurrentRole() === 'admin' ? `<button class="btn btn-end" style="flex:1; padding: 0.5rem; font-size: 0.85rem; background: var(--accent-red);" onclick="openCancelGameModal(${table.id})">CANCEL GAME</button>` : ''}
                 ` : ''}
                 </div>
                 <div style="display: flex; gap: 0.5rem;">
