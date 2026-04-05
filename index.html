@@ -172,6 +172,89 @@
         </div>
     </div>
 
+    <!-- Shift Table Modal -->
+    <div id="shift-table-modal" class="modal">
+        <div class="modal-content" style="max-width: 450px;">
+            <div class="modal-header">
+                <h2>Shift Table</h2>
+                <button class="close-btn" onclick="closeShiftTableModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p style="margin-bottom: 1rem; color: var(--text-secondary);">Select an idle table to shift the current game to:</p>
+                <div class="form-group" style="margin-bottom: 1.5rem;">
+                    <label>Target Idle Table</label>
+                    <select id="shift-target-table" style="width: 100%;"></select>
+                </div>
+                <div style="margin-bottom: 1rem; padding: 1rem; background: var(--bg-input); border-radius: 8px; border: 1px solid var(--border-color);">
+                    <h3 style="font-size: 0.9rem; margin-bottom: 0.5rem; color: var(--text-primary);">How to handle the current bill?</h3>
+                    <label style="display: block; margin-bottom: 0.5rem; cursor: pointer;">
+                        <input type="radio" name="shift_bill_split" value="equal" checked> Split accrued bill equally among players (Credit)
+                    </label>
+                    <label style="display: block; cursor: pointer;">
+                        <input type="radio" name="shift_bill_split" value="payer"> Assign entire accrued bill to <span id="shift-payer-name-display" style="font-weight:bold;">Player 1</span> (Credit)
+                    </label>
+                </div>
+                <div class="modal-actions" style="display: flex; gap: 1rem;">
+                    <button class="btn btn-end" style="flex: 1;" onclick="closeShiftTableModal()">Cancel</button>
+                    <button class="btn btn-start" style="flex: 2;" onclick="executeShiftTable()">Confirm Shift</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Admin Cancel Modal -->
+    <div id="cancel-game-modal" class="modal">
+        <div class="modal-content" style="max-width: 400px; border: 2px solid var(--accent-red);">
+            <div class="modal-header">
+                <h2 style="color: var(--accent-red);">🚨 Cancel Active Game</h2>
+                <button class="close-btn" onclick="closeCancelGameModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p style="margin-bottom: 1rem; color: var(--text-secondary); font-size: 0.9rem;">Cancelling a game requires Master Admin authorization. A ledger entry with Rs. 0 will be recorded.</p>
+                <div class="form-group" style="margin-bottom: 1rem;">
+                    <label>Master Admin Password</label>
+                    <input type="password" id="cancel-admin-pass" placeholder="Enter master password...">
+                </div>
+                <div class="form-group" style="margin-bottom: 1.5rem;">
+                    <label>Cancellation Reason Code (Required)</label>
+                    <input type="text" id="cancel-reason" placeholder="e.g. Started by mistake, Table error...">
+                </div>
+                <div class="modal-actions" style="display: flex; gap: 1rem;">
+                    <button class="btn" style="flex: 1; background: var(--bg-card);" onclick="closeCancelGameModal()">Abort</button>
+                    <button class="btn btn-end" style="flex: 2; background: var(--accent-red);" onclick="executeCancelGame()">Authorize Cancel</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Opponent Checkout Transfer Modal -->
+    <div id="opponent-transfer-modal" class="modal">
+        <div class="modal-content" style="max-width: 400px;">
+            <div class="modal-header">
+                <h2>Transfer Bill to Opponent</h2>
+                <button class="close-btn" onclick="closeOpponentTransferModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p style="margin-bottom: 1rem; color: var(--text-secondary); font-size: 0.9rem;">
+                    The bill will dynamically recalculate based on the opponent's membership status (e.g., Non-Member base rate falls back to Rs. 350).
+                </p>
+                <div class="form-group" style="margin-bottom: 1.5rem;">
+                    <label>Select Opponent / Target Player</label>
+                    <select id="opponent-transfer-select" style="width: 100%; border-color: var(--accent-blue);">
+                        <!-- Injected via JS -->
+                    </select>
+                </div>
+                <div id="opponent-recalc-preview" style="margin-bottom: 1.5rem; text-align: center; color: var(--accent-red); font-weight: bold; font-size: 1.2rem;">
+                    <!-- Preview calculated automatically -->
+                </div>
+                <div class="modal-actions" style="display: flex; gap: 1rem;">
+                    <button class="btn btn-end" style="flex: 1;" onclick="closeOpponentTransferModal()">Cancel</button>
+                    <button class="btn btn-transfer" style="flex: 2;" onclick="executeCheckoutTransfer()">Transfer Debt</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script src="app.js?v=4.1"></script>
     <script>
         document.addEventListener('DOMContentLoaded', () => {

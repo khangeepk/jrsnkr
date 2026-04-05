@@ -369,10 +369,16 @@ const renderTables = () => {
                     ` : ''}
                 </div>
 
+                <div style="display: flex; gap: 0.5rem; margin-bottom: 0.5rem;">
+                ${isRunning ? `
+                    <button class="btn btn-online" style="flex:1; padding: 0.5rem; font-size: 0.85rem;" onclick="openShiftTableModal(${table.id})">SHIFT TABLE</button>
+                    <button class="btn btn-end" style="flex:1; padding: 0.5rem; font-size: 0.85rem; background: var(--accent-red);" onclick="openCancelGameModal(${table.id})">CANCEL GAME</button>
+                ` : ''}
+                </div>
                 <div style="display: flex; gap: 0.5rem;">
                 ${isRunning ?
                 `
-                <button class="btn btn-cash" style="flex: 1; padding: 0.75rem;" onclick="openTransferModal(${table.id})">Transfer</button>
+                <button class="btn btn-cash" style="flex: 1; padding: 0.75rem;" onclick="openTransferModal(${table.id})">Table Transfer</button>
                 <button class="btn btn-end" style="flex: 2; padding: 0.75rem;" onclick="endSession(${table.id})">END SESSION <span style="font-size:1.1rem">🏁</span></button>
                 ` :
                 (hasPerm('add') ? `<button class="btn btn-start" id="start-btn-${table.id}" style="padding: 0.75rem;" onclick="startSession(${table.id})" disabled>START SESSION</button>` : `<button class="btn" disabled style="opacity:0.5; cursor:not-allowed;">Access Restricted</button>`)
@@ -1550,4 +1556,298 @@ window.debugAgeTable = (tableId, minutesToAge) => {
         renderTables();
         showToast(`Fast-forwarded Table ${tableId} by ${minutesToAge}m!`);
     }
+};
+
+// ==========================================
+// Part 2: Advanced Authorizations & Shifting
+// ==========================================
+
+// --- Opponent Checkout Transfer ---
+let activeCheckoutTransferTarget = null;
+
+window.showTransferModal = (tableId, currentPlayerName, currentBill) => {
+    activeCheckoutTransferTarget = tableId;
+    const sessionData = window[`session_${tableId}`];
+    if (!sessionData) return;
+
+    const selectEl = document.getElementById('opponent-transfer-select');
+    selectEl.innerHTML = '';
+
+    const allProfiles = getAllKnownProfiles();
+    
+    // Suggest active players first
+    sessionData.activePlayers.forEach(p => {
+        if (p !== currentPlayerName && p.trim() !== '') {
+            const profile = getUnifiedPlayerProfile(p);
+            selectEl.innerHTML += `<option value="${p}">${p} (${profile.status})</option>`;
+        }
+    });
+
+    // Also allow transferring to any DB known player
+    allProfiles.forEach(p => {
+        if (p.name !== currentPlayerName && !sessionData.activePlayers.includes(p.name)) {
+            selectEl.innerHTML += `<option value="${p.name}">${p.name} (${p.status})</option>`;
+        }
+    });
+
+    document.getElementById('opponent-transfer-modal').style.display = 'block';
+    window.updateOpponentTransferPreview();
+};
+
+window.closeOpponentTransferModal = () => {
+    document.getElementById('opponent-transfer-modal').style.display = 'none';
+    activeCheckoutTransferTarget = null;
+};
+
+document.getElementById('opponent-transfer-select')?.addEventListener('change', () => {
+    if(activeCheckoutTransferTarget) window.updateOpponentTransferPreview();
+});
+
+window.updateOpponentTransferPreview = () => {
+    if (!activeCheckoutTransferTarget) return;
+    const sessionData = window[`session_${activeCheckoutTransferTarget}`];
+    const selectEl = document.getElementById('opponent-transfer-select');
+    if (!selectEl.value) return;
+    
+    const opponentName = selectEl.value;
+    const profile = getUnifiedPlayerProfile(opponentName);
+
+    // Recalculate bill as if ONLY opponent played (to strictly apply their member/non-member rate)
+    const { bill } = calculateBill(sessionData.gameMode, sessionData.totalMinutes, [opponentName]);
+    const recalculatedBill = Math.ceil(bill);
+
+    const previewEl = document.getElementById('opponent-recalc-preview');
+    if(profile.status === 'Non-Member') {
+        previewEl.innerHTML = `Non-Member Rate Applies<br>New Transfer Bill: Rs. ${recalculatedBill}`;
+    } else {
+        previewEl.innerHTML = `Member Rate Applies<br>New Transfer Bill: Rs. ${recalculatedBill}`;
+        previewEl.style.color = 'var(--accent-blue)';
+    }
+};
+
+window.executeCheckoutTransfer = () => {
+    if (!activeCheckoutTransferTarget) return;
+    const tableId = activeCheckoutTransferTarget;
+    const sessionData = window[`session_${tableId}`];
+    
+    const selectEl = document.getElementById('opponent-transfer-select');
+    const opponentName = selectEl.value;
+    if (!opponentName) return;
+    const profile = getUnifiedPlayerProfile(opponentName);
+
+    // Recalculate full bill based purely on opponent's rate
+    const { bill, baseRateApplied } = calculateBill(sessionData.gameMode, sessionData.totalMinutes, [opponentName]);
+    const totalBill = Math.ceil(bill);
+
+    sessionData.totalBill = totalBill;
+    sessionData.baseRateApplied = baseRateApplied;
+    sessionData.playerName = `TRANSFERRED TO ${opponentName}`;
+    sessionData.playerStatus = profile.status;
+    
+    // Add to opponent's ledger directly
+    confirmPayment(tableId, opponentName, totalBill, 'Credit');
+    logSessionToLedger(sessionData);
+
+    const tables = getTablesState();
+    const tableIndex = tables.findIndex(t => t.id === tableId);
+    if(tableIndex !== -1) {
+        tables[tableIndex].isActive = false;
+        tables[tableIndex].playerName = '';
+        tables[tableIndex].players = [];
+        tables[tableIndex].gameMode = 'Single';
+        tables[tableIndex].startTime = null;
+    }
+    saveTablesState(tables);
+    renderTables();
+    delete window[`session_${tableId}`];
+    closeOpponentTransferModal();
+
+    showToast(`Game successfully transferred! Rs. ${totalBill} added to ${opponentName}'s ledger.`);
+};
+
+// --- Cancel Game Logic ---
+let activeCancelTarget = null;
+window.openCancelGameModal = (tableId) => {
+    activeCancelTarget = tableId;
+    document.getElementById('cancel-admin-pass').value = '';
+    document.getElementById('cancel-reason').value = '';
+    document.getElementById('cancel-game-modal').style.display = 'block';
+};
+
+window.closeCancelGameModal = () => {
+    document.getElementById('cancel-game-modal').style.display = 'none';
+    activeCancelTarget = null;
+};
+
+window.executeCancelGame = () => {
+    const pass = document.getElementById('cancel-admin-pass').value;
+    const reason = document.getElementById('cancel-reason').value.trim();
+    if(!pass || !reason) {
+        showToast("Both password and reason are required.", "error");
+        return;
+    }
+    
+    const sysUsers = JSON.parse(localStorage.getItem('sys_users') || '[]');
+    const masterAdmin = sysUsers.find(u => u.role === 'admin');
+    
+    if(!masterAdmin || masterAdmin.password !== pass) {
+        showToast("Invalid Master Admin password.", "error");
+        return;
+    }
+
+    if (!activeCancelTarget) return;
+    const tableId = activeCancelTarget;
+    
+    const tables = getTablesState();
+    const tableIndex = tables.findIndex(t => t.id === tableId);
+    if (tableIndex === -1) return;
+    
+    const t = tables[tableIndex];
+    
+    const sessionData = {
+        tableId: t.id,
+        gameMode: t.gameMode,
+        startTime: t.startTime,
+        endTime: Date.now(),
+        totalMinutes: 0,
+        totalBill: 0,
+        finalAmountDue: 0,
+        playerName: (t.players && t.players[0]) || t.playerName || 'Unknown',
+        payerStatus: 'CANCELLED',
+        mode: 'Cancelled',
+        reason: reason
+    };
+
+    logSessionToLedger(sessionData);
+    
+    const dailyIncome = JSON.parse(localStorage.getItem('dailyIncome') || '[]');
+    dailyIncome.push({
+        id: Date.now(),
+        date: new Date().toISOString(),
+        playerName: sessionData.playerName + ' (CANCELLED)',
+        amount: 0,
+        mode: 'Cancelled',
+        reason: reason
+    });
+    localStorage.setItem('dailyIncome', JSON.stringify(dailyIncome));
+    
+    t.isActive = false;
+    t.playerName = '';
+    t.players = [];
+    t.gameMode = 'Single';
+    t.startTime = null;
+
+    saveTablesState(tables);
+    renderTables();
+    updateDashboardMetrics();
+    closeCancelGameModal();
+    showToast(`Table ${tableId} Cancelled Successfully. Logged as 0.`, 'success');
+};
+
+// --- Table Shifting Logic ---
+let activeShiftSource = null;
+window.openShiftTableModal = (tableId) => {
+    const tables = getTablesState();
+    const tIndex = tables.findIndex(t => t.id === tableId);
+    if(tIndex === -1 || !tables[tIndex].isActive) return;
+    
+    activeShiftSource = tableId;
+    
+    const selectEl = document.getElementById('shift-target-table');
+    selectEl.innerHTML = '';
+    
+    let idleCount = 0;
+    tables.forEach(t => {
+        if(!t.isActive) {
+            selectEl.innerHTML += `<option value="${t.id}">Table ${t.id} (Idle)</option>`;
+            idleCount++;
+        }
+    });
+
+    if(idleCount === 0) {
+        showToast("No idle tables to shift to.", "error");
+        activeShiftSource = null;
+        return;
+    }
+
+    const payer = tables[tIndex].players && tables[tIndex].players[0] ? tables[tIndex].players[0] : tables[tIndex].playerName;
+    document.getElementById('shift-payer-name-display').textContent = payer || 'Player 1';
+
+    document.getElementById('shift-table-modal').style.display = 'block';
+};
+
+window.closeShiftTableModal = () => {
+    document.getElementById('shift-table-modal').style.display = 'none';
+    activeShiftSource = null;
+};
+
+window.executeShiftTable = () => {
+    if(!activeShiftSource) return;
+    const targetTableId = parseInt(document.getElementById('shift-target-table').value, 10);
+    if(isNaN(targetTableId)) return;
+
+    const splitModeEl = document.querySelector('input[name="shift_bill_split"]:checked');
+    if(!splitModeEl) return;
+    const splitMode = splitModeEl.value;
+    
+    const tables = getTablesState();
+    const sourceTable = tables.find(t => t.id === activeShiftSource);
+    const targetTable = tables.find(t => t.id === targetTableId);
+    
+    if(!sourceTable || !targetTable) return;
+
+    const diffMs = Date.now() - sourceTable.startTime;
+    const totalMinutes = Math.floor(diffMs / 60000);
+    const activePlayers = (sourceTable.players || []).filter(p => p.trim() !== '');
+    
+    const { bill } = calculateBill(sourceTable.gameMode, totalMinutes, activePlayers);
+    const totalBill = Math.ceil(bill);
+    
+    // Distribute credit based on splitMode
+    if (splitMode === 'payer') {
+        const payer = activePlayers.length > 0 ? activePlayers[0] : sourceTable.playerName || 'Unknown';
+        confirmPayment(sourceTable.id, payer, totalBill, 'Credit');
+        showToast(`Rs. ${totalBill} added to ${payer}'s credit ledger.`);
+    } else {
+        const splitCount = activePlayers.length || 1;
+        const splitAmount = Math.ceil(totalBill / splitCount);
+        activePlayers.forEach(p => {
+            confirmPayment(sourceTable.id, p, splitAmount, 'Credit');
+        });
+        showToast(`Bill of Rs. ${totalBill} split between ${splitCount} players.`);
+    }
+
+    logSessionToLedger({
+        tableId: sourceTable.id,
+        gameMode: sourceTable.gameMode,
+        startTime: sourceTable.startTime,
+        endTime: Date.now(),
+        totalMinutes: totalMinutes,
+        totalBill: totalBill,
+        finalAmountDue: totalBill,
+        playerName: 'SHIFTED TO T' + targetTableId,
+        payerStatus: 'Shifted',
+        date: new Date().toISOString()
+    });
+
+    targetTable.isActive = true;
+    targetTable.players = [...(sourceTable.players || [])];
+    targetTable.playerName = sourceTable.playerName;
+    targetTable.gameMode = sourceTable.gameMode;
+    targetTable.centuryType = sourceTable.centuryType;
+    targetTable.teamSize = sourceTable.teamSize;
+    targetTable.groupCount = sourceTable.groupCount;
+    targetTable.startTime = Date.now();
+    targetTable.alertedLimit = false;
+
+    sourceTable.isActive = false;
+    sourceTable.playerName = '';
+    sourceTable.players = [];
+    sourceTable.gameMode = 'Single';
+    sourceTable.startTime = null;
+
+    saveTablesState(tables);
+    renderTables();
+    closeShiftTableModal();
+    showToast(`Table successfully shifted to Table ${targetTableId}!`);
 };
