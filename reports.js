@@ -831,7 +831,7 @@ const renderMemberDirectory = () => {
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
                     <td><code style="color: var(--accent-blue);">${m.member_id || '-'}</code></td>
-                    <td><strong>${m.name || '-'}</strong></td>
+                    <td><strong style="cursor: pointer; color: var(--accent-blue); text-decoration: underline;" onclick="openMemberProfile('${m.member_id}', 'Annual')">${m.name || '-'}</strong></td>
                     <td>${m.phone || '-'}</td>
                     <td>${startDate}</td>
                     <td>${expiryDate}</td>
@@ -870,7 +870,7 @@ const renderMemberDirectory = () => {
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
                     <td><code style="color: var(--accent-warning);">${m.member_id || '-'}</code></td>
-                    <td><strong>${m.name || '-'}</strong></td>
+                    <td><strong style="cursor: pointer; color: var(--accent-blue); text-decoration: underline;" onclick="openMemberProfile('${m.member_id}', 'Tournament')">${m.name || '-'}</strong></td>
                     <td>${m.tournament_id || '-'}</td>
                     <td><span style="color: ${badgeColor}; font-weight: 600;">${m.status || 'Unknown'}</span></td>
                     <td style="color: ${balance > 0 ? 'var(--accent-red)' : 'var(--text-secondary)'}; font-weight: 600;">Rs. ${balance}</td>
@@ -1099,6 +1099,101 @@ document.getElementById('edit-member-form').addEventListener('submit', (e) => {
     showToast("Member details updated successfully.");
 });
 
+// ==========================================
+// Phase 1: Universal Search & Profile Dashboard
+// ==========================================
+
+// Attach event listener directly to search bar if it exists
+document.addEventListener('DOMContentLoaded', () => {
+    const searchBar = document.getElementById('member-search-bar');
+    if (searchBar) {
+        searchBar.addEventListener('input', filterMemberDirectory);
+    }
+});
+
+const filterMemberDirectory = () => {
+    const input = document.getElementById('member-search-bar');
+    if (!input) return;
+    
+    const filter = input.value.toLowerCase().trim();
+
+    // Tables to filter
+    const annualTable = document.getElementById('dir-annual-tbody');
+    const tourTable = document.getElementById('dir-tour-tbody');
+
+    const tables = [annualTable, tourTable];
+
+    tables.forEach(tbody => {
+        if (!tbody) return;
+        const trs = tbody.getElementsByTagName('tr');
+        for (let i = 0; i < trs.length; i++) {
+            // Only look at the first two columns (ID and Name) generally
+            const tdId = trs[i].getElementsByTagName('td')[0];
+            const tdName = trs[i].getElementsByTagName('td')[1];
+
+            if (tdId && tdName) {
+                const idValue = tdId.textContent || tdId.innerText;
+                const nameValue = tdName.textContent || tdName.innerText;
+
+                if (idValue.toLowerCase().indexOf(filter) > -1 || nameValue.toLowerCase().indexOf(filter) > -1) {
+                    trs[i].style.display = "";
+                } else {
+                    trs[i].style.display = "none";
+                }
+            }
+        }
+    });
+};
+
+const openMemberProfile = (memberId, type) => {
+    let member = null;
+
+    if (type === 'Annual') {
+        const members = getAnnualMembers();
+        member = members.find(m => m.member_id === memberId);
+    } else {
+        const members = getTournamentMembers();
+        member = members.find(m => m.member_id === memberId);
+    }
+
+    if (!member) {
+        showToast("Error locating member properties.", "error");
+        return;
+    }
+
+    document.getElementById('profile-name').textContent = member.name || 'Unknown';
+    document.getElementById('profile-id').textContent = `ID: ${member.member_id}`;
+    
+    const d = member.start_date ? new Date(member.start_date) : new Date(member.id || Date.now());
+    document.getElementById('profile-join-date').textContent = `Join Date: ${d.toLocaleDateString()}`;
+    
+    const typeBadge = document.getElementById('profile-type');
+    typeBadge.textContent = type;
+    if (type === 'Annual') {
+        typeBadge.style.backgroundColor = "rgba(56,189,248,0.2)";
+        typeBadge.style.color = "var(--accent-blue)";
+    } else {
+        typeBadge.style.backgroundColor = "rgba(234,179,8,0.2)";
+        typeBadge.style.color = "var(--accent-warning)";
+    }
+
+    const photoEl = document.getElementById('profile-photo');
+    if (member.photo) {
+        photoEl.src = member.photo;
+        photoEl.style.display = 'block';
+    } else {
+        photoEl.src = '';
+        photoEl.style.display = 'none';
+    }
+
+    // Modal view triggers
+    document.getElementById('member-profile-modal').style.display = 'block';
+};
+
+const closeMemberProfileModal = () => {
+    document.getElementById('member-profile-modal').style.display = 'none';
+};
+
 window.calculateAnnualExpiry = calculateAnnualExpiry;
 window.processImage = processImage;
 window.addAnnualMember = addAnnualMember;
@@ -1109,6 +1204,9 @@ window.printIDCard = printIDCard;
 window.deleteMember = deleteMember;
 window.openEditMemberModal = openEditMemberModal;
 window.closeEditMemberModal = closeEditMemberModal;
+window.filterMemberDirectory = filterMemberDirectory;
+window.openMemberProfile = openMemberProfile;
+window.closeMemberProfileModal = closeMemberProfileModal;
 window.logout = logout;
 window.showCCTVModal = showCCTVModal;
 window.closeCCTVModal = closeCCTVModal;

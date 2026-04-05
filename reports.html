@@ -283,6 +283,15 @@
                         Members (.xls)</button>
                 </div>
 
+                <!-- Phase 1: Universal Search Bar -->
+                <div class="form-group" style="margin-bottom: 2rem; position: relative;">
+                    <div style="position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); font-size: 1.2rem; color: var(--text-secondary);">🔍</div>
+                    <input type="search" id="member-search-bar" placeholder="Search by Name or Member ID..." 
+                           style="padding-left: 3rem; font-size: 1.05rem; border-radius: 8px; border: 2px solid var(--border-color); background: var(--bg-input); width: 100%; transition: all 0.3s ease;"
+                           onfocus="this.style.borderColor='var(--accent-blue)'; this.style.boxShadow='0 0 0 3px rgba(56,189,248,0.2)';"
+                           onblur="this.style.borderColor='var(--border-color)'; this.style.boxShadow='none';">
+                </div>
+
                 <!-- Annual Members -->
                 <h3 style="font-size: 1rem; margin-bottom: 0.75rem; color: var(--accent-green);">Annual Members</h3>
                 <div class="table-responsive" style="margin-bottom: 2rem;">
@@ -442,6 +451,48 @@
             <div class="modal-body" style="padding: 1rem;">
                 <img id="proof-modal-img" src="" style="width: 100%; border-radius: 8px; border: 2px solid var(--border-color); object-fit: contain; max-height: 70vh;">
                 <button class="btn btn-end" style="margin-top: 1rem; width: 100%;" onclick="closeProofModal()">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Phase 1: Member Profile Dashboard Modal -->
+    <div id="member-profile-modal" class="modal">
+        <div class="modal-content" style="max-width: 900px; width: 95%; max-height: 90vh; overflow-y: auto;">
+            <div class="modal-header">
+                <h2 style="color: var(--accent-blue);" id="profile-modal-title">Member Profile Dashboard</h2>
+                <button class="close-btn" onclick="closeMemberProfileModal()">&times;</button>
+            </div>
+            <div class="modal-body" style="padding: 1.5rem; display: flex; flex-direction: column; gap: 2rem;">
+                <!-- Basic Info Card -->
+                <div class="profile-section" style="background: var(--bg-input); padding: 1.5rem; border-radius: 8px; border: 1px solid var(--border-color); display: flex; gap: 2rem; align-items: center;">
+                    <img id="profile-photo" src="" alt="Profile" style="width: 120px; height: 120px; border-radius: 50%; object-fit: cover; border: 3px solid var(--accent-blue); display: none;">
+                    <div style="flex: 1;">
+                        <h3 id="profile-name" style="margin-bottom: 0.5rem; font-size: 1.8rem;">Name</h3>
+                        <p id="profile-id" style="color: var(--text-secondary); font-variant-numeric: tabular-nums; margin-bottom: 0.5rem;">ID: -</p>
+                        <p id="profile-join-date" style="color: var(--text-secondary); margin-bottom: 0.5rem;">Join Date: -</p>
+                        <span id="profile-type" style="padding: 0.3rem 0.6rem; border-radius: 4px; font-size: 0.85rem; font-weight: 600;">Type</span>
+                    </div>
+                </div>
+
+                <div style="display: flex; gap: 2rem; flex-wrap: wrap;">
+                    <!-- Game History Placeholder -->
+                    <div class="profile-section" style="flex: 2; min-width: 300px; background: var(--bg-input); padding: 1.5rem; border-radius: 8px; border: 1px solid var(--border-color);">
+                        <h3 style="margin-bottom: 1rem; color: var(--accent-green);">🎮 Game History</h3>
+                        <div id="profile-game-history" style="color: var(--text-secondary); text-align: center; padding: 2rem 0; font-style: italic;">
+                            Loading historical sessions...
+                        </div>
+                    </div>
+
+                    <!-- Account Ledger Placeholder -->
+                    <div class="profile-section" style="flex: 1; min-width: 300px; background: var(--bg-input); padding: 1.5rem; border-radius: 8px; border: 1px solid var(--border-color);">
+                        <h3 style="margin-bottom: 1rem; color: var(--accent-red);">💳 Account Ledger</h3>
+                        <div id="profile-account-ledger" style="color: var(--text-secondary); text-align: center; padding: 2rem 0; font-style: italic;">
+                            Loading financial logs...
+                        </div>
+                    </div>
+                </div>
+                
+                <button class="btn btn-end" style="width: 100%; margin-top: 1rem;" onclick="closeMemberProfileModal()">Close Dashboard</button>
             </div>
         </div>
     </div>
