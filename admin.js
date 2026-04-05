@@ -476,15 +476,104 @@ const renderPlayerLedger = () => {
                 <td><span class="status-badge" style="border: 1px solid ${badgeColor}; color: ${badgeColor}; background: transparent;">${p.status}</span></td>
                 <td style="color: var(--accent-red); font-weight: bold; font-size: 1.1rem;">Rs. ${p.balance}</td>
                 <td>
-                    <button class="btn btn-cash" style="padding: 0.3rem 0.8rem; font-size: 0.85rem;" onclick="clearPlayerDebt('${p.name}')">Clear Debt manually</button>
+                    <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                        <button class="btn btn-cash" style="padding: 0.3rem 0.6rem; font-size: 0.8rem; flex: 1;" onclick="settlePlayerDebt('${p.name}', 'Cash', ${p.balance})">Cash</button>
+                        <button class="btn btn-online" style="padding: 0.3rem 0.6rem; font-size: 0.8rem; flex: 1;" onclick="openLedgerOnlineModal('${p.name}', ${p.balance})">Online</button>
+                        <button class="btn btn-end" style="padding: 0.3rem 0.6rem; font-size: 0.8rem; flex: 1; background: transparent; border: 1px solid var(--accent-red); color: var(--accent-red);" onclick="clearPlayerDebt('${p.name}')">Forgive</button>
+                    </div>
                 </td>
             </tr>
         `;
     });
 };
 
+const settlePlayerDebt = (playerName, mode, amount) => {
+    if (confirm(`Settle ${playerName}'s debt of Rs. ${amount} via ${mode}? This WILL add money to today's Daily Income.`)) {
+        let players = JSON.parse(localStorage.getItem('players') || '[]');
+        const pIndex = players.findIndex(p => p.name === playerName);
+
+        if (pIndex !== -1) {
+            players[pIndex].balance = 0;
+            localStorage.setItem('players', JSON.stringify(players));
+            
+            // Log to dailyIncome
+            const dailyIncome = JSON.parse(localStorage.getItem('dailyIncome') || '[]');
+            dailyIncome.push({
+                id: Date.now(),
+                date: new Date().toISOString(),
+                playerName: playerName + ' (Ledger Settlement)',
+                amount: amount,
+                mode: mode,
+                is_pending: false
+            });
+            localStorage.setItem('dailyIncome', JSON.stringify(dailyIncome));
+            
+            renderPlayerLedger();
+            showToast(`Rs. ${amount} debt cleared & collected via ${mode}.`, 'success');
+        } else {
+            showToast("Player record not found.", 'error');
+        }
+    }
+};
+
+let activeLedgerOnlineTarget = null;
+let activeLedgerOnlineAmount = 0;
+
+window.openLedgerOnlineModal = (playerName, amount) => {
+    activeLedgerOnlineTarget = playerName;
+    activeLedgerOnlineAmount = amount;
+    document.getElementById('ledger-online-player').textContent = playerName;
+    document.getElementById('ledger-online-amount').textContent = amount;
+    document.getElementById('ledger-online-proof').value = '';
+    document.getElementById('ledger-online-modal').style.display = 'block';
+};
+
+window.closeLedgerOnlineModal = () => {
+    document.getElementById('ledger-online-modal').style.display = 'none';
+    activeLedgerOnlineTarget = null;
+};
+
+window.executeLedgerOnlinePayment = async () => {
+    if (!activeLedgerOnlineTarget) return;
+    const fileInput = document.getElementById('ledger-online-proof');
+    if (!fileInput.files || fileInput.files.length === 0) {
+        showToast("Please select a screenshot proving payment.", "error");
+        return;
+    }
+
+    try {
+        const base64 = await processAdminImage(fileInput.files[0]);
+        let players = JSON.parse(localStorage.getItem('players') || '[]');
+        const pIndex = players.findIndex(p => p.name === activeLedgerOnlineTarget);
+
+        if (pIndex !== -1) {
+            players[pIndex].balance = 0;
+            localStorage.setItem('players', JSON.stringify(players));
+            
+            // Log to dailyIncome
+            const dailyIncome = JSON.parse(localStorage.getItem('dailyIncome') || '[]');
+            dailyIncome.push({
+                id: Date.now(),
+                date: new Date().toISOString(),
+                playerName: activeLedgerOnlineTarget + ' (Ledger Settlement)',
+                amount: activeLedgerOnlineAmount,
+                mode: 'Online',
+                is_pending: false,
+                proof_image: base64
+            });
+            localStorage.setItem('dailyIncome', JSON.stringify(dailyIncome));
+            
+            renderPlayerLedger();
+            closeLedgerOnlineModal();
+            showToast(`Rs. ${activeLedgerOnlineAmount} debt cleared & collected via Online.`, 'success');
+        }
+    } catch(err) {
+        showToast("Failed to process proof image.", "error");
+    }
+};
+
 const clearPlayerDebt = (playerName) => {
-    if (confirm(`ACTION REQUIRED: Are you manually clearing the debt for ${playerName}? This will NOT add money to the Daily Income portal.`)) {
+    if (confirm(`ACTION REQUIRED: Are you manually forgiving/clearing the debt for ${playerName}? This will NOT record any income.`)) {
         let players = JSON.parse(localStorage.getItem('players') || '[]');
         const pIndex = players.findIndex(p => p.name === playerName);
 
@@ -492,7 +581,7 @@ const clearPlayerDebt = (playerName) => {
             players[pIndex].balance = 0;
             localStorage.setItem('players', JSON.stringify(players));
             renderPlayerLedger();
-            showToast(`Debt cleared for ${playerName}.`, 'success');
+            showToast(`Debt forgiven for ${playerName}.`, 'success');
         } else {
             showToast("Player record not found.", 'error');
         }

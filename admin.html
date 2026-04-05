@@ -325,6 +325,30 @@
         </div>
     </div>
 
+    <!-- Ledger Online Settlement Modal -->
+    <div id="ledger-online-modal" class="modal">
+        <div class="modal-content" style="max-width: 450px;">
+            <div class="modal-header">
+                <h2 style="color: var(--accent-blue);">💳 Online Settlement</h2>
+                <button class="close-btn" onclick="closeLedgerOnlineModal()">&times;</button>
+            </div>
+            <div class="modal-body" style="padding: 1rem;">
+                <p style="margin-bottom: 1rem; color: var(--text-secondary); font-size: 0.9rem;">
+                    Upload the transaction screenshot to clear <span id="ledger-online-player" style="font-weight:bold;color:var(--text-primary);"></span>'s debt of 
+                    <span id="ledger-online-amount" style="font-weight:bold;color:var(--accent-red);"></span> PKR.
+                </p>
+                <div class="form-group" style="margin-bottom: 1.5rem;">
+                    <label>Upload Payment Proof (Required)</label>
+                    <input type="file" id="ledger-online-proof" accept="image/*" required>
+                </div>
+                <div class="modal-actions" style="display: flex; gap: 1rem;">
+                    <button class="btn btn-end" style="flex: 1;" onclick="closeLedgerOnlineModal()">Cancel</button>
+                    <button class="btn btn-online" style="flex: 2;" onclick="executeLedgerOnlinePayment()">Confirm Settlement</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Online Payment Proof Modal -->
     <div id="proof-modal" class="modal">
         <div class="modal-content" style="max-width: 500px; text-align: center;">

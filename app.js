@@ -1031,9 +1031,7 @@ const recalculateBill = (tableId) => {
         </div>
 
         <div style="display: flex; gap: 0.5rem; margin-top: 1rem; flex-wrap: wrap;">
-            <button class="btn btn-cash" style="flex: 1; min-width: 30%;" onclick="finalizeSession(${tableId}, 'Cash')">Cash</button>
-            <button class="btn btn-online" style="flex: 1; min-width: 30%;" onclick="showOnlineCheckout(${tableId})">Online</button>
-            <button class="btn btn-credit" style="flex: 1; min-width: 30%;" onclick="finalizeSession(${tableId}, 'Credit')">Credit</button>
+            <button class="btn btn-credit" style="flex: 1; min-width: 100%; font-size: 1.1rem; padding: 1rem;" onclick="finalizeSession(${tableId}, 'Credit')">Bill to Account (End Game)</button>
             <button class="btn btn-transfer" style="flex: 1 1 100%;" onclick="showTransferModal(${tableId}, '${sessionData.playerName.replace(/'/g, "\\'")}', ${totalBill})">Transfer to Opponent</button>
         </div>
         <button class="btn btn-end" style="width: 100%; margin-top: 0.5rem; background: var(--bg-card); color: var(--text-main);" onclick="document.getElementById('results-${tableId}').innerHTML = ''; const act = document.querySelector('#table-card-${tableId} .actions'); if(act) act.style.display='flex';">Cancel Checkout</button>
@@ -1184,17 +1182,7 @@ const confirmPayment = (tableId, playerName, amount, mode, proofString = null) =
         }
         savePlayers(players);
         
-        // Push to Daily Ledger as PENDING
-        dailyIncome.push({
-            id: Date.now(),
-            date: new Date().toISOString(),
-            playerName: mappedPlayerName,
-            amount: transactionAmount,
-            mode: 'Credit',
-            is_pending: true
-        });
-        
-        showToast(`Rs.${transactionAmount} added to ${mappedPlayerName}'s debt. Marking in Ledger.`, 'error');
+        showToast(`Rs.${transactionAmount} added to ${mappedPlayerName}'s debt. Mode: Credit.`, 'error');
     } else {
         // Cash or Online => Pay current bill + clear previous balance
         const players = getPlayers();

@@ -141,6 +141,14 @@ const renderIncomePortal = () => {
     const receivedEl = document.getElementById('total-received');
     const pendingEl = document.getElementById('total-pending');
     
+    // Phase 3: Total Pending is now strictly read from the Global Ledger (players array) aggregated balances
+    let aggregatedPending = 0;
+    const players = JSON.parse(localStorage.getItem('players') || '[]');
+    players.forEach(p => { if(p.balance > 0) aggregatedPending += p.balance; });
+    
+    // Fallback addition incase old pending dailyIncome rows exist
+    totalPending += aggregatedPending;
+
     if (receivedEl) receivedEl.innerText = `Received: Rs. ${totalReceived}`;
     if (pendingEl) pendingEl.innerText = `Pending: Rs. ${totalPending}`;
     
