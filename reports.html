@@ -474,21 +474,53 @@
                     </div>
                 </div>
 
-                <div style="display: flex; gap: 2rem; flex-wrap: wrap;">
-                    <!-- Game History Placeholder -->
-                    <div class="profile-section" style="flex: 2; min-width: 300px; background: var(--bg-input); padding: 1.5rem; border-radius: 8px; border: 1px solid var(--border-color);">
-                        <h3 style="margin-bottom: 1rem; color: var(--accent-green);">🎮 Game History</h3>
-                        <div id="profile-game-history" style="color: var(--text-secondary); text-align: center; padding: 2rem 0; font-style: italic;">
-                            Loading historical sessions...
+                <!-- Phase 2: Game History with Analytics -->
+                <div class="profile-section" style="background: var(--bg-input); padding: 1.5rem; border-radius: 8px; border: 1px solid var(--border-color);">
+                    <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem; margin-bottom: 1.25rem;">
+                        <h3 style="margin: 0; color: var(--accent-green);">🎮 Game History</h3>
+                        <!-- Time Filter Tabs -->
+                        <div style="display: flex; gap: 0.4rem; background: var(--bg-card); border-radius: 8px; padding: 0.25rem;">
+                            <button id="filter-7d" class="btn" onclick="loadMemberGameHistory('7d')" style="padding: 0.3rem 0.75rem; font-size: 0.8rem; border-radius: 6px; background: var(--accent-blue); color: white;">7 Days</button>
+                            <button id="filter-30d" class="btn" onclick="loadMemberGameHistory('30d')" style="padding: 0.3rem 0.75rem; font-size: 0.8rem; border-radius: 6px; background: transparent; color: var(--text-secondary);">30 Days</button>
+                            <button id="filter-all" class="btn" onclick="loadMemberGameHistory('all')" style="padding: 0.3rem 0.75rem; font-size: 0.8rem; border-radius: 6px; background: transparent; color: var(--text-secondary);">All Time</button>
                         </div>
                     </div>
 
-                    <!-- Account Ledger Placeholder -->
-                    <div class="profile-section" style="flex: 1; min-width: 300px; background: var(--bg-input); padding: 1.5rem; border-radius: 8px; border: 1px solid var(--border-color);">
-                        <h3 style="margin-bottom: 1rem; color: var(--accent-red);">💳 Account Ledger</h3>
-                        <div id="profile-account-ledger" style="color: var(--text-secondary); text-align: center; padding: 2rem 0; font-style: italic;">
-                            Loading financial logs...
+                    <!-- Stat Widgets Row -->
+                    <div style="display: flex; gap: 1rem; flex-wrap: wrap; margin-bottom: 1.5rem;">
+                        <div style="flex: 1; min-width: 100px; background: var(--bg-card); border-radius: 8px; padding: 1rem; text-align: center; border: 1px solid var(--border-color);">
+                            <div id="stat-total" style="font-size: 2rem; font-weight: 700; color: var(--accent-blue);">0</div>
+                            <div style="font-size: 0.78rem; color: var(--text-secondary); margin-top: 0.25rem;">Total Games</div>
                         </div>
+                        <div style="flex: 1; min-width: 100px; background: var(--bg-card); border-radius: 8px; padding: 1rem; text-align: center; border: 1px solid var(--border-color);">
+                            <div id="stat-wins" style="font-size: 2rem; font-weight: 700; color: var(--accent-green);">0</div>
+                            <div style="font-size: 0.78rem; color: var(--text-secondary); margin-top: 0.25rem;">Wins</div>
+                        </div>
+                        <div style="flex: 1; min-width: 100px; background: var(--bg-card); border-radius: 8px; padding: 1rem; text-align: center; border: 1px solid var(--border-color);">
+                            <div id="stat-losses" style="font-size: 2rem; font-weight: 700; color: var(--accent-red);">0</div>
+                            <div style="font-size: 0.78rem; color: var(--text-secondary); margin-top: 0.25rem;">Losses</div>
+                        </div>
+                        <div style="flex: 1; min-width: 100px; background: var(--bg-card); border-radius: 8px; padding: 1rem; text-align: center; border: 1px solid var(--border-color);">
+                            <div id="stat-winrate" style="font-size: 2rem; font-weight: 700; color: var(--accent-warning);">0%</div>
+                            <div style="font-size: 0.78rem; color: var(--text-secondary); margin-top: 0.25rem;">Win Rate</div>
+                        </div>
+                        <div style="flex: 1; min-width: 100px; background: var(--bg-card); border-radius: 8px; padding: 1rem; text-align: center; border: 1px solid var(--border-color);">
+                            <div id="stat-spent" style="font-size: 1.5rem; font-weight: 700; color: var(--accent-red);">Rs. 0</div>
+                            <div style="font-size: 0.78rem; color: var(--text-secondary); margin-top: 0.25rem;">Total Spent</div>
+                        </div>
+                    </div>
+
+                    <!-- Game Log Table -->
+                    <div id="profile-game-history" style="overflow-x: auto;">
+                        <div style="color: var(--text-secondary); text-align: center; padding: 2rem 0; font-style: italic;">Loading historical sessions...</div>
+                    </div>
+                </div>
+
+                <!-- Account Ledger Placeholder -->
+                <div class="profile-section" style="background: var(--bg-input); padding: 1.5rem; border-radius: 8px; border: 1px solid var(--border-color);">
+                    <h3 style="margin-bottom: 1rem; color: var(--accent-red);">💳 Account Ledger</h3>
+                    <div id="profile-account-ledger" style="color: var(--text-secondary); text-align: center; padding: 2rem 0; font-style: italic;">
+                        Loading financial logs...
                     </div>
                 </div>
                 

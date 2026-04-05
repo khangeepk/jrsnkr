@@ -1186,12 +1186,174 @@ const openMemberProfile = (memberId, type) => {
         photoEl.style.display = 'none';
     }
 
+    // Phase 2: Store active profile name for analytics engine
+    _activeProfileMemberName = member.name || null;
+
     // Modal view triggers
     document.getElementById('member-profile-modal').style.display = 'block';
+
+    // Phase 2: Load game history on profile open (default: 7 days)
+    loadMemberGameHistory('7d');
 };
 
 const closeMemberProfileModal = () => {
     document.getElementById('member-profile-modal').style.display = 'none';
+    _activeProfileMemberName = null;
+};
+
+// =============================================================
+// Phase 2: Game History Aggregation & Win/Loss Analytics Engine
+// =============================================================
+
+let _activeProfileMemberName = null;
+
+// Helper: check if a session belongs to this member
+const _sessionBelongsToMember = (session, memberName) => {
+    if (!memberName) return false;
+    const lname = memberName.toLowerCase().trim();
+
+    // Check primary playerName field
+    if (session.playerName && session.playerName.toLowerCase().trim() === lname) return true;
+
+    // Check the players array (Double/Century modes)
+    if (Array.isArray(session.players)) {
+        return session.players.some(p => p && p.toLowerCase().trim() === lname);
+    }
+    if (Array.isArray(session.activePlayers)) {
+        return session.activePlayers.some(p => p && p.toLowerCase().trim() === lname);
+    }
+
+    return false;
+};
+
+// Helper: naively determine win/loss from session
+// "Win" = the member was the payer (nominated) AND has the lowest time / lowest bill split;
+// Since we don't store explicit win/loss, we approximate:
+//   - If you are the PAYER you "lost" (paid) — considered a Loss
+//   - If you were a participant but NOT the payer — considered a Win
+// This is snooker lounge context where the loser conventionally pays.
+const _determineResult = (session, memberName) => {
+    const lname = memberName.toLowerCase().trim();
+    const payer = (session.playerName || '').toLowerCase().trim();
+    if (payer === lname) return 'Loss';
+    return 'Win';
+};
+
+const loadMemberGameHistory = (filter = '7d') => {
+    // Update active tab styling
+    ['7d', '30d', 'all'].forEach(f => {
+        const btn = document.getElementById(`filter-${f}`);
+        if (!btn) return;
+        if (f === filter) {
+            btn.style.background = 'var(--accent-blue)';
+            btn.style.color = 'white';
+        } else {
+            btn.style.background = 'transparent';
+            btn.style.color = 'var(--text-secondary)';
+        }
+    });
+
+    const memberName = _activeProfileMemberName;
+    if (!memberName) return;
+
+    const now = Date.now();
+    let cutoff = 0;
+    if (filter === '7d')  cutoff = now - 7  * 24 * 60 * 60 * 1000;
+    if (filter === '30d') cutoff = now - 30 * 24 * 60 * 60 * 1000;
+
+    // Pull every session from ledger
+    const allSessions = JSON.parse(localStorage.getItem('sessionLedger') || '[]');
+
+    // Filter by member and time range
+    const memberSessions = allSessions.filter(s => {
+        if (!_sessionBelongsToMember(s, memberName)) return false;
+        const ts = s.endTime || s.startTime || (s.date ? new Date(s.date).getTime() : 0);
+        if (filter !== 'all' && ts < cutoff) return false;
+        // Exclude cancelled/shifted logs
+        if (s.payerStatus === 'Cancelled' || s.payerStatus === 'Shifted') return false;
+        return true;
+    });
+
+    // Sort newest first
+    memberSessions.sort((a, b) => {
+        const ta = a.endTime || a.startTime || 0;
+        const tb = b.endTime || b.startTime || 0;
+        return tb - ta;
+    });
+
+    // Aggregate stats
+    const total  = memberSessions.length;
+    const wins   = memberSessions.filter(s => _determineResult(s, memberName) === 'Win').length;
+    const losses = total - wins;
+    const winRate = total > 0 ? Math.round((wins / total) * 100) : 0;
+    const totalSpent = memberSessions
+        .filter(s => _determineResult(s, memberName) === 'Loss')
+        .reduce((sum, s) => sum + (s.totalBill || s.finalAmountDue || 0), 0);
+
+    // Update stat widgets
+    const setEl = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+    setEl('stat-total',   total);
+    setEl('stat-wins',    wins);
+    setEl('stat-losses',  losses);
+    setEl('stat-winrate', winRate + '%');
+    setEl('stat-spent',   'Rs. ' + totalSpent);
+
+    // Render game log table
+    const container = document.getElementById('profile-game-history');
+    if (!container) return;
+
+    if (total === 0) {
+        container.innerHTML = `<div style="color: var(--text-secondary); text-align: center; padding: 2rem 0; font-style: italic;">No games found for this time period.</div>`;
+        return;
+    }
+
+    let tableHtml = `
+        <table class="data-table" style="width: 100%; font-size: 0.85rem;">
+            <thead>
+                <tr>
+                    <th>Date & Time</th>
+                    <th>Table</th>
+                    <th>Mode</th>
+                    <th>Opponent(s)</th>
+                    <th>Duration</th>
+                    <th>Bill</th>
+                    <th>Result</th>
+                </tr>
+            </thead>
+            <tbody>
+    `;
+
+    memberSessions.forEach(s => {
+        const ts = s.endTime || s.startTime || (s.date ? new Date(s.date).getTime() : 0);
+        const dateStr = ts ? new Date(ts).toLocaleDateString() : '-';
+        const timeStr = ts ? new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '-';
+
+        // Opponents = all players excluding this member
+        const allPlayers = [...(s.activePlayers || s.players || [])];
+        const opponents = allPlayers.filter(p => p && p.toLowerCase().trim() !== memberName.toLowerCase().trim());
+        const opponentStr = opponents.length > 0 ? opponents.join(', ') : (s.playerName !== memberName ? s.playerName : '-');
+
+        const result = _determineResult(s, memberName);
+        const resultColor = result === 'Win' ? 'var(--accent-green)' : 'var(--accent-red)';
+        const resultEmoji = result === 'Win' ? '🏆' : '💸';
+        const bill = s.totalBill || s.finalAmountDue || 0;
+        const mins = s.totalMinutes ? `${s.totalMinutes} min` : '-';
+
+        tableHtml += `
+            <tr>
+                <td>${dateStr}<br><span style="color: var(--text-secondary); font-size: 0.75rem;">${timeStr}</span></td>
+                <td>T${s.tableId || '-'}</td>
+                <td>${s.gameMode || 'Single'}</td>
+                <td style="max-width: 150px; word-break: break-word;">${opponentStr || '-'}</td>
+                <td>${mins}</td>
+                <td style="color: ${result === 'Loss' ? 'var(--accent-red)' : 'var(--text-secondary)'};">Rs. ${bill}</td>
+                <td><span style="font-weight: 700; color: ${resultColor};">${resultEmoji} ${result}</span></td>
+            </tr>
+        `;
+    });
+
+    tableHtml += `</tbody></table>`;
+    container.innerHTML = tableHtml;
 };
 
 window.calculateAnnualExpiry = calculateAnnualExpiry;
@@ -1207,6 +1369,7 @@ window.closeEditMemberModal = closeEditMemberModal;
 window.filterMemberDirectory = filterMemberDirectory;
 window.openMemberProfile = openMemberProfile;
 window.closeMemberProfileModal = closeMemberProfileModal;
+window.loadMemberGameHistory = loadMemberGameHistory;
 window.logout = logout;
 window.showCCTVModal = showCCTVModal;
 window.closeCCTVModal = closeCCTVModal;
