@@ -501,7 +501,7 @@ const renderPlayerLedger = () => {
                     <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
                         <button class="btn btn-cash" style="padding: 0.3rem 0.6rem; font-size: 0.8rem; flex: 1;" onclick="settlePlayerDebt('${p.name}', 'Cash', ${p.balance})">Cash</button>
                         <button class="btn btn-online" style="padding: 0.3rem 0.6rem; font-size: 0.8rem; flex: 1;" onclick="openLedgerOnlineModal('${p.name}', ${p.balance})">Online</button>
-                        <button class="btn btn-end" style="padding: 0.3rem 0.6rem; font-size: 0.8rem; flex: 1; background: transparent; border: 1px solid var(--accent-red); color: var(--accent-red);" onclick="clearPlayerDebt('${p.name}')">Forgive</button>
+                        <button class="btn btn-transfer" style="padding: 0.3rem 0.6rem; font-size: 0.8rem; flex: 1; background: transparent; border: 1px solid var(--accent-blue); color: var(--accent-blue);" onclick="keepAsCredit('${p.name}', ${p.balance})">Keep as Credit</button>
                     </div>
                 </td>
             </tr>
@@ -594,21 +594,14 @@ window.executeLedgerOnlinePayment = async () => {
     }
 };
 
-const clearPlayerDebt = (playerName) => {
-    if (confirm(`ACTION REQUIRED: Are you manually forgiving/clearing the debt for ${playerName}? This will NOT record any income.`)) {
-        let players = JSON.parse(localStorage.getItem('players') || '[]');
-        const pIndex = players.findIndex(p => p.name === playerName);
-
-        if (pIndex !== -1) {
-            players[pIndex].balance = 0;
-            localStorage.setItem('players', JSON.stringify(players));
-            renderPlayerLedger();
-            showToast(`Debt forgiven for ${playerName}.`, 'success');
-        } else {
-            showToast("Player record not found.", 'error');
-        }
-    }
+const keepAsCredit = (playerName, amount) => {
+    // Credit action: acknowledge the outstanding balance WITHOUT clearing it.
+    // The debt remains safely stored in the player's ledger as a payable balance.
+    showToast(`Rs. ${amount} kept as outstanding credit for ${playerName}. Balance preserved.`, 'success');
+    // Re-render to reflect any UI state changes (no state mutation occurs)
+    renderPlayerLedger();
 };
+window.keepAsCredit = keepAsCredit;
 
 // ==========================================
 // 5. GENERIC EDIT MODAL LOGIC
