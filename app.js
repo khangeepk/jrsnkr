@@ -1636,7 +1636,7 @@ window.updateOpponentTransferPreview = () => {
     }
 };
 
-window.executeCheckoutTransfer = () => {
+window.transferToOpponent = () => {
     if (!activeCheckoutTransferTarget) return;
     const tableId = activeCheckoutTransferTarget;
     const sessionData = window[`session_${tableId}`];
@@ -1646,35 +1646,45 @@ window.executeCheckoutTransfer = () => {
     if (!opponentName) return;
     const profile = getUnifiedPlayerProfile(opponentName);
 
-    // Recalculate full bill based purely on opponent's rate
-    const { bill, baseRateApplied } = calculateBill(sessionData.gameMode, sessionData.totalMinutes, [opponentName]);
-    const totalBill = Math.ceil(bill);
-
-    sessionData.totalBill = totalBill;
-    sessionData.baseRateApplied = baseRateApplied;
-    sessionData.playerName = `TRANSFERRED TO ${opponentName}`;
-    sessionData.playerStatus = profile.status;
-    
-    // Add to opponent's ledger directly
-    confirmPayment(tableId, opponentName, totalBill, 'Credit');
-    logSessionToLedger(sessionData);
-
+    // Intercept Transfer Logic: Update the playerId or playerName to the opponent
     const tables = getTablesState();
     const tableIndex = tables.findIndex(t => t.id === tableId);
     if(tableIndex !== -1) {
-        tables[tableIndex].isActive = false;
-        tables[tableIndex].playerName = '';
-        tables[tableIndex].players = [];
-        tables[tableIndex].gameMode = 'Single';
-        tables[tableIndex].startTime = null;
+        tables[tableIndex].players = [opponentName];
+        tables[tableIndex].playerName = opponentName;
+        saveTablesState(tables);
     }
-    saveTablesState(tables);
+    
+    sessionData.playerName = opponentName;
+    sessionData.playerStatus = profile.status;
+    sessionData.activePlayers = [opponentName];
+
+    // Trigger a fresh price calculation
+    const { bill, baseRateApplied } = calculateBill(sessionData.gameMode, sessionData.totalMinutes, [opponentName]);
+    const totalBill = Math.ceil(bill);
+
+    // State Update
+    sessionData.totalBill = totalBill;
+    sessionData.baseRateApplied = baseRateApplied;
+    
+    const previous = sessionData.previousBalance || 0;
+    const transferred = sessionData.transferredAmount || 0;
+    const finalAmountDue = totalBill + previous + transferred;
+    sessionData.finalAmountDue = finalAmountDue;
+
+    // Ensure the updated amount reflects immediately on the UI before the checkout/ledger push
+    const billDisplay = document.getElementById(`bill-amount-${tableId}`);
+    if (billDisplay) billDisplay.innerText = `Rs. ${totalBill}`;
+    
+    const finalDisplay = document.getElementById('checkout-final-amount');
+    if (finalDisplay) finalDisplay.innerText = `Rs. ${finalAmountDue}`;
+
     renderTables();
-    delete window[`session_${tableId}`];
     closeOpponentTransferModal();
 
-    showToast(`Game successfully transferred! Rs. ${totalBill} added to ${opponentName}'s ledger.`);
+    showToast(`Game transferred to ${opponentName} (${profile.status}). Rate recalculated to Rs. ${totalBill}. Please verify and complete checkout.`);
 };
+
 
 // --- Cancel Game Logic ---
 let activeCancelTarget = null;
