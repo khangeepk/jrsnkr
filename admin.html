@@ -329,29 +329,42 @@
         </div>
     </div>
 
-    <!-- Ledger Online Settlement Modal -->
-    <div id="ledger-online-modal" class="modal">
-        <div class="modal-content" style="max-width: 450px;">
+    <!-- Unified Partial Payment Modal -->
+    <div id="partial-payment-modal" class="modal">
+        <div class="modal-content" style="max-width: 460px;">
             <div class="modal-header">
-                <h2 style="color: var(--accent-blue);">💳 Online Settlement</h2>
-                <button class="close-btn" onclick="closeLedgerOnlineModal()">&times;</button>
+                <h2 style="color: var(--accent-blue);">💰 Settle Ledger Debt</h2>
+                <button class="close-btn" onclick="closePartialPaymentModal()">&times;</button>
             </div>
-            <div class="modal-body" style="padding: 1rem;">
-                <p style="margin-bottom: 1rem; color: var(--text-secondary); font-size: 0.9rem;">
-                    Upload the transaction screenshot to clear <span id="ledger-online-player" style="font-weight:bold;color:var(--text-primary);"></span>'s debt of 
-                    <span id="ledger-online-amount" style="font-weight:bold;color:var(--accent-red);"></span> PKR.
-                </p>
-                <div class="form-group" style="margin-bottom: 1.5rem;">
-                    <label>Upload Payment Proof (Required)</label>
-                    <input type="file" id="ledger-online-proof" accept="image/*" required>
+            <div class="modal-body" style="padding: 1.25rem;">
+                <div style="background: var(--bg-input); border-radius: 10px; padding: 1rem; margin-bottom: 1.25rem; border: 1px solid var(--border-color);">
+                    <p style="margin: 0 0 0.25rem; color: var(--text-secondary); font-size: 0.85rem;">Player</p>
+                    <p id="pp-player-name" style="font-weight: 700; font-size: 1.1rem; color: var(--text-primary); margin: 0;"></p>
+                    <p style="margin: 0.75rem 0 0.25rem; color: var(--text-secondary); font-size: 0.85rem;">Total Outstanding Balance</p>
+                    <p id="pp-total-due" style="font-weight: 700; font-size: 1.4rem; color: var(--accent-red); margin: 0;"></p>
                 </div>
-                <div class="modal-actions" style="display: flex; gap: 1rem;">
-                    <button class="btn btn-end" style="flex: 1;" onclick="closeLedgerOnlineModal()">Cancel</button>
-                    <button class="btn btn-online" style="flex: 2;" onclick="executeLedgerOnlinePayment()">Confirm Settlement</button>
+
+                <div class="form-group" style="margin-bottom: 1.25rem;">
+                    <label for="pp-amount-input" style="font-weight: 600;">Amount Paying Now (PKR)</label>
+                    <input type="number" id="pp-amount-input" min="1" style="margin-top: 0.5rem; font-size: 1.1rem; font-weight: 600; color: var(--accent-green);" placeholder="Enter amount...">
+                    <p id="pp-remaining-preview" style="margin-top: 0.5rem; font-size: 0.85rem; color: var(--text-secondary);"></p>
+                </div>
+
+                <!-- Proof upload (only visible for Online mode) -->
+                <div id="pp-proof-section" class="form-group" style="margin-bottom: 1.25rem; display: none;">
+                    <label>Upload Payment Proof (Required for Online)</label>
+                    <input type="file" id="pp-proof-upload" accept="image/*" style="margin-top: 0.5rem;">
+                </div>
+
+                <div class="modal-actions" style="display: flex; gap: 0.75rem;">
+                    <button class="btn btn-end" style="flex: 1;" onclick="closePartialPaymentModal()">Cancel</button>
+                    <button id="pp-cash-btn" class="btn btn-cash" style="flex: 2;" onclick="executePartialPayment('Cash')">Pay Cash</button>
+                    <button id="pp-online-btn" class="btn btn-online" style="flex: 2; display:none;" onclick="executePartialPayment('Online')">Confirm Online</button>
                 </div>
             </div>
         </div>
     </div>
+
 
     <!-- Online Payment Proof Modal -->
     <div id="proof-modal" class="modal">

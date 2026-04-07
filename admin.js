@@ -499,8 +499,8 @@ const renderPlayerLedger = () => {
                 <td style="color: var(--accent-red); font-weight: bold; font-size: 1.1rem;">Rs. ${p.balance}</td>
                 <td>
                     <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
-                        <button class="btn btn-cash" style="padding: 0.3rem 0.6rem; font-size: 0.8rem; flex: 1;" onclick="settlePlayerDebt('${p.name}', 'Cash', ${p.balance})">Cash</button>
-                        <button class="btn btn-online" style="padding: 0.3rem 0.6rem; font-size: 0.8rem; flex: 1;" onclick="openLedgerOnlineModal('${p.name}', ${p.balance})">Online</button>
+                        <button class="btn btn-cash" style="padding: 0.3rem 0.6rem; font-size: 0.8rem; flex: 1;" onclick="openPartialPaymentModal('${p.name}', ${p.balance}, 'Cash')">Cash</button>
+                        <button class="btn btn-online" style="padding: 0.3rem 0.6rem; font-size: 0.8rem; flex: 1;" onclick="openPartialPaymentModal('${p.name}', ${p.balance}, 'Online')">Online</button>
                         <button class="btn btn-transfer" style="padding: 0.3rem 0.6rem; font-size: 0.8rem; flex: 1; background: transparent; border: 1px solid var(--accent-blue); color: var(--accent-blue);" onclick="keepAsCredit('${p.name}', ${p.balance})">Keep as Credit</button>
                     </div>
                 </td>
@@ -509,90 +509,140 @@ const renderPlayerLedger = () => {
     });
 };
 
-const settlePlayerDebt = (playerName, mode, amount) => {
-    if (confirm(`Settle ${playerName}'s debt of Rs. ${amount} via ${mode}? This WILL add money to today's Daily Income.`)) {
-        let players = JSON.parse(localStorage.getItem('players') || '[]');
-        const pIndex = players.findIndex(p => p.name === playerName);
+// ==========================================
+// 4b. PARTIAL PAYMENT ENGINE
+// ==========================================
 
-        if (pIndex !== -1) {
-            players[pIndex].balance = 0;
-            localStorage.setItem('players', JSON.stringify(players));
-            
-            // Log to dailyIncome
-            const dailyIncome = JSON.parse(localStorage.getItem('dailyIncome') || '[]');
-            dailyIncome.push({
-                id: Date.now(),
-                date: new Date().toISOString(),
-                playerName: playerName + ' (Ledger Settlement)',
-                amount: amount,
-                mode: mode,
-                is_pending: false
-            });
-            localStorage.setItem('dailyIncome', JSON.stringify(dailyIncome));
-            
-            renderPlayerLedger();
-            showToast(`Rs. ${amount} debt cleared & collected via ${mode}.`, 'success');
-        } else {
-            showToast("Player record not found.", 'error');
-        }
+let _ppTarget = null;
+let _ppTotalDue = 0;
+let _ppMode = 'Cash';
+
+window.openPartialPaymentModal = (playerName, totalDue, mode) => {
+    _ppTarget = playerName;
+    _ppTotalDue = totalDue;
+    _ppMode = mode;
+
+    document.getElementById('pp-player-name').textContent = playerName;
+    document.getElementById('pp-total-due').textContent = `Rs. ${totalDue}`;
+    document.getElementById('pp-remaining-preview').textContent = '';
+
+    const amtInput = document.getElementById('pp-amount-input');
+    amtInput.value = totalDue;   // Default = full amount
+    amtInput.max = totalDue;
+
+    // Show/hide proof section and correct button based on mode
+    const proofSection = document.getElementById('pp-proof-section');
+    const cashBtn = document.getElementById('pp-cash-btn');
+    const onlineBtn = document.getElementById('pp-online-btn');
+    if (mode === 'Online') {
+        proofSection.style.display = 'block';
+        document.getElementById('pp-proof-upload').value = '';
+        cashBtn.style.display = 'none';
+        onlineBtn.style.display = 'flex';
+    } else {
+        proofSection.style.display = 'none';
+        cashBtn.style.display = 'flex';
+        onlineBtn.style.display = 'none';
     }
+
+    // Live remaining preview as user types
+    amtInput.oninput = () => {
+        const paying = parseFloat(amtInput.value) || 0;
+        const remaining = _ppTotalDue - paying;
+        const preview = document.getElementById('pp-remaining-preview');
+        if (paying <= 0) {
+            preview.textContent = '';
+        } else if (paying > _ppTotalDue) {
+            preview.textContent = '⚠️ Cannot exceed total due.';
+            preview.style.color = 'var(--accent-red)';
+        } else if (remaining > 0) {
+            preview.textContent = `After payment: Rs. ${remaining.toFixed(0)} will remain as outstanding credit.`;
+            preview.style.color = 'var(--text-secondary)';
+        } else {
+            preview.textContent = '✅ Full debt will be cleared.';
+            preview.style.color = 'var(--accent-green)';
+        }
+    };
+
+    document.getElementById('partial-payment-modal').style.display = 'flex';
 };
 
-let activeLedgerOnlineTarget = null;
-let activeLedgerOnlineAmount = 0;
-
-window.openLedgerOnlineModal = (playerName, amount) => {
-    activeLedgerOnlineTarget = playerName;
-    activeLedgerOnlineAmount = amount;
-    document.getElementById('ledger-online-player').textContent = playerName;
-    document.getElementById('ledger-online-amount').textContent = amount;
-    document.getElementById('ledger-online-proof').value = '';
-    document.getElementById('ledger-online-modal').style.display = 'block';
+window.closePartialPaymentModal = () => {
+    document.getElementById('partial-payment-modal').style.display = 'none';
+    _ppTarget = null;
 };
 
-window.closeLedgerOnlineModal = () => {
-    document.getElementById('ledger-online-modal').style.display = 'none';
-    activeLedgerOnlineTarget = null;
-};
+window.executePartialPayment = async (mode) => {
+    if (!_ppTarget) return;
 
-window.executeLedgerOnlinePayment = async () => {
-    if (!activeLedgerOnlineTarget) return;
-    const fileInput = document.getElementById('ledger-online-proof');
-    if (!fileInput.files || fileInput.files.length === 0) {
-        showToast("Please select a screenshot proving payment.", "error");
+    const amtInput = document.getElementById('pp-amount-input');
+    const amountPaying = Math.floor(parseFloat(amtInput.value) || 0);
+
+    // Validation
+    if (amountPaying <= 0) {
+        showToast('Please enter a valid amount greater than 0.', 'error');
+        return;
+    }
+    if (amountPaying > _ppTotalDue) {
+        showToast(`Amount cannot exceed total due of Rs. ${_ppTotalDue}.`, 'error');
         return;
     }
 
-    try {
-        const base64 = await processAdminImage(fileInput.files[0]);
-        let players = JSON.parse(localStorage.getItem('players') || '[]');
-        const pIndex = players.findIndex(p => p.name === activeLedgerOnlineTarget);
-
-        if (pIndex !== -1) {
-            players[pIndex].balance = 0;
-            localStorage.setItem('players', JSON.stringify(players));
-            
-            // Log to dailyIncome
-            const dailyIncome = JSON.parse(localStorage.getItem('dailyIncome') || '[]');
-            dailyIncome.push({
-                id: Date.now(),
-                date: new Date().toISOString(),
-                playerName: activeLedgerOnlineTarget + ' (Ledger Settlement)',
-                amount: activeLedgerOnlineAmount,
-                mode: 'Online',
-                is_pending: false,
-                proof_image: base64
-            });
-            localStorage.setItem('dailyIncome', JSON.stringify(dailyIncome));
-            
-            renderPlayerLedger();
-            closeLedgerOnlineModal();
-            showToast(`Rs. ${activeLedgerOnlineAmount} debt cleared & collected via Online.`, 'success');
+    let proofBase64 = null;
+    if (mode === 'Online') {
+        const fileInput = document.getElementById('pp-proof-upload');
+        if (!fileInput.files || fileInput.files.length === 0) {
+            showToast('Payment proof screenshot is required for Online mode.', 'error');
+            return;
         }
-    } catch(err) {
-        showToast("Failed to process proof image.", "error");
+        try {
+            proofBase64 = await processAdminImage(fileInput.files[0]);
+        } catch (err) {
+            showToast('Failed to process proof image.', 'error');
+            return;
+        }
+    }
+
+    const remaining = _ppTotalDue - amountPaying;
+
+    // Update player balance to the remaining amount
+    let players = JSON.parse(localStorage.getItem('players') || '[]');
+    const pIdx = players.findIndex(p => p.name === _ppTarget);
+    if (pIdx !== -1) {
+        players[pIdx].balance = remaining;   // Partial or full settlement
+        localStorage.setItem('players', JSON.stringify(players));
+    }
+
+    // Log amount paid to dailyIncome
+    const dailyIncome = JSON.parse(localStorage.getItem('dailyIncome') || '[]');
+    const label = remaining > 0
+        ? ` (Partial Settlement — Rs. ${remaining} remaining)`
+        : ' (Full Settlement)';
+    dailyIncome.push({
+        id: Date.now(),
+        date: new Date().toISOString(),
+        playerName: _ppTarget + label,
+        amount: amountPaying,
+        mode: mode,
+        is_pending: false,
+        proof_image: proofBase64
+    });
+    localStorage.setItem('dailyIncome', JSON.stringify(dailyIncome));
+
+    renderPlayerLedger();
+    closePartialPaymentModal();
+
+    if (remaining > 0) {
+        showToast(`Rs. ${amountPaying} collected via ${mode}. Rs. ${remaining} kept as outstanding credit.`, 'success');
+    } else {
+        showToast(`Full debt of Rs. ${_ppTotalDue} cleared via ${mode}. Ledger updated.`, 'success');
     }
 };
+
+// Legacy aliases kept for safety (in case any external script still calls them)
+window.openLedgerOnlineModal = (n, a) => window.openPartialPaymentModal(n, a, 'Online');
+window.closeLedgerOnlineModal = () => window.closePartialPaymentModal();
+
 
 const keepAsCredit = (playerName, amount) => {
     // Credit action: acknowledge the outstanding balance WITHOUT clearing it.
